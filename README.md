@@ -5,9 +5,9 @@ OCR experimentation project using GOT-OCR-2.0-hf model from HuggingFace, optimiz
 ## Features
 
 - Vision Language Model-based OCR using GOT-OCR-2.0-hf
-- MPS (Metal Performance Shaders) support for Apple Silicon M2
+- Optimized for Apple Silicon M2 (CPU mode)
 - Dual entry points: CLI and REST API
-- Designed for low-volume, occasional use
+- Designed for low-volume, occasional use (~80s per image)
 
 ## Tech Stack
 
@@ -46,11 +46,22 @@ ocrvlm/
 
 ## Development
 
-### Phase 1: M2 Compatibility Testing (Current)
+### Phase 1: M2 Compatibility Testing ✅ Complete
+
+**Findings:**
+- GOT-OCR-2.0-hf works well on M2 with CPU
+- Model loading: ~26s, Inference: ~80s per image
+- OCR quality: Excellent
+- **MPS note**: MPS acceleration is slower than CPU for this model - CPU mode recommended
+
+**Validation notebook:** `notebooks/first.ipynb`
+
+### Current Phase
+
+- **Phase 2**: Core implementation (model manager, processing utilities)
 
 ### Future Phases
 
-- **Phase 2**: Core implementation (model manager, processing utilities)
 - **Phase 3**: CLI scripts with Fire
 - **Phase 4**: FastAPI REST API
 - **Phase 5**: Docker containerization

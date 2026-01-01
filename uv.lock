@@ -1323,38 +1323,42 @@ name = "ocrvlm"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "fastapi" },
     { name = "fire" },
     { name = "pillow" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "python-multipart" },
     { name = "torch" },
     { name = "torchvision" },
     { name = "transformers" },
-    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.dev-dependencies]
+api = [
+    { name = "fastapi" },
+    { name = "python-multipart" },
+    { name = "uvicorn", extra = ["standard"] },
+]
 dev = [
     { name = "jupyter" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "fire", specifier = ">=0.7.1" },
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "python-multipart", specifier = ">=0.0.18" },
     { name = "torch", specifier = ">=2.9.1" },
     { name = "torchvision", specifier = ">=0.24.1" },
     { name = "transformers", specifier = ">=4.57.3" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
 
 [package.metadata.requires-dev]
+api = [
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "python-multipart", specifier = ">=0.0.18" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
+]
 dev = [{ name = "jupyter", specifier = ">=1.1.1" }]
 
 [[package]]

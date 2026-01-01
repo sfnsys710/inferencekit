@@ -221,12 +221,14 @@ Dependencies are organized in `pyproject.toml`:
 - **Core**: torch, transformers, pillow, pydantic (needed by all)
 - **API group**: fastapi, uvicorn, python-multipart
 - **Dev group**: jupyter
+- **Pre-commit group**: pre-commit hooks and linting tools
 
 Install only what you need:
 ```bash
-uv sync              # Core + CLI only
-uv sync --group api  # Core + CLI + API
-uv sync --group dev  # Core + CLI + dev tools
+uv sync                    # Core + CLI only
+uv sync --group api        # Core + CLI + API
+uv sync --group dev        # Core + CLI + dev tools
+uv sync --group pre-commit # Core + CLI + pre-commit hooks
 ```
 
 ## Critical Analysis & Tradeoffs
@@ -454,6 +456,29 @@ This section provides honest assessment of our architectural choices, their limi
 - **Instances**: Scale horizontally for concurrent requests
 
 ## Development
+
+### Pre-commit Hooks
+
+The project uses pre-commit hooks for code quality:
+
+```bash
+# Install pre-commit hooks
+uv sync --group pre-commit
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+
+# Run on staged files (automatic on git commit)
+git commit -m "your message"
+```
+
+**Hooks included:**
+- **File hygiene**: trailing whitespace, end-of-file fixer, line endings
+- **Validation**: YAML, TOML, JSON, large files, merge conflicts
+- **Python**: Ruff linting and formatting (100 char line length)
+- **Security**: Secret detection (excluding notebooks)
+- **Notebooks**: Ruff linting, strip outputs while keeping metadata
 
 ### Running Tests
 ```bash

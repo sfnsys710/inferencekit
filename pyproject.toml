@@ -48,7 +48,10 @@ select = [
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
 ]
-ignore = []
+ignore = [
+    "B008",  # FastAPI uses File() in function defaults
+    "B904",  # Allow raising exceptions without from clause
+]
 
 [tool.ruff.format]
 quote-style = "double"

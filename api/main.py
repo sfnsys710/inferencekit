@@ -5,11 +5,12 @@ import tempfile
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from ocrvlm import GOTOCRModel, ImageHandler, OCRResult, get_settings
-from .schemas import OCRUrlRequest, OCRResponse
+
+from .schemas import OCRResponse, OCRUrlRequest
 
 # Initialize settings and logging
 settings = get_settings()
@@ -62,7 +63,10 @@ async def get_ocr_info():
         },
         "example_usage": {
             "upload": "curl -X POST -F 'file=@image.jpg' http://localhost:8080/ocr/upload",
-            "url": 'curl -X POST -H "Content-Type: application/json" -d \'{"url":"https://example.com/image.jpg"}\' http://localhost:8080/ocr/url',
+            "url": (
+                'curl -X POST -H "Content-Type: application/json" '
+                '-d \'{"url":"https://example.com/image.jpg"}\' http://localhost:8080/ocr/url'
+            ),
         },
         "performance": {
             "model_load_time_seconds": "~26",
@@ -104,7 +108,9 @@ async def ocr_upload(file: UploadFile = File(...)):
 
     try:
         # Save uploaded file to temp location
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename or "image").suffix)
+        temp_file = tempfile.NamedTemporaryFile(
+            delete=False, suffix=Path(file.filename or "image").suffix
+        )
         content = await file.read()
         temp_file.write(content)
         temp_file.close()
@@ -130,7 +136,9 @@ async def ocr_upload(file: UploadFile = File(...)):
         inference_start = time.time()
         text = model.generate(image, settings)
         inference_time = time.time() - inference_start
-        logger.info(f"OCR completed in {inference_time:.2f} seconds, extracted {len(text)} characters")
+        logger.info(
+            f"OCR completed in {inference_time:.2f} seconds, extracted {len(text)} characters"
+        )
 
         # Cleanup model
         model.unload()
@@ -201,7 +209,9 @@ async def ocr_url(request: OCRUrlRequest):
         inference_start = time.time()
         text = model.generate(image, settings)
         inference_time = time.time() - inference_start
-        logger.info(f"OCR completed in {inference_time:.2f} seconds, extracted {len(text)} characters")
+        logger.info(
+            f"OCR completed in {inference_time:.2f} seconds, extracted {len(text)} characters"
+        )
 
         # Cleanup model
         model.unload()

@@ -1,6 +1,6 @@
 """Request and response schemas for the OCR API."""
 
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class OCRUrlRequest(BaseModel):
@@ -9,6 +9,7 @@ class OCRUrlRequest(BaseModel):
     Attributes:
         url: HTTP(S) URL of the image to process
     """
+
     url: HttpUrl = Field(..., description="Image URL to process")
 
 
@@ -24,6 +25,7 @@ class OCRResponse(BaseModel):
         success: Whether the OCR operation was successful
         error: Error message if operation failed, None otherwise
     """
+
     text: str
     model_id: str
     inference_time_seconds: float

@@ -3,7 +3,6 @@
 import io
 import logging
 from pathlib import Path
-from typing import Union
 
 import requests
 from PIL import Image
@@ -56,7 +55,7 @@ class ImageHandler:
         logger.debug(f"Image loaded successfully: {image.size} {image.format}")
         return image
 
-    def load_from_path(self, path: Union[str, Path]) -> Image.Image:
+    def load_from_path(self, path: str | Path) -> Image.Image:
         """Load and validate image from file path.
 
         Args:

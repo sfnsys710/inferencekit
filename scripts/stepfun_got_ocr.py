@@ -11,7 +11,6 @@ Usage:
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
 import fire
 
@@ -29,11 +28,11 @@ def setup_logging(level: str = "INFO") -> None:
 
 
 def stepfun_got_ocr(
-    path: Optional[str] = None,
-    url: Optional[str] = None,
-    device: Optional[str] = None,
-    output: Optional[str] = None,
-    max_tokens: Optional[int] = None,
+    path: str | None = None,
+    url: str | None = None,
+    device: str | None = None,
+    output: str | None = None,
+    max_tokens: int | None = None,
 ) -> str:
     """Run OCR on an image from a file path or URL.
 
@@ -101,7 +100,7 @@ def stepfun_got_ocr(
     inference_time = time.time() - inference_start
 
     # Create result
-    result = OCRResult(
+    OCRResult(
         text=text,
         model_id=settings.model_id,
         inference_time_seconds=inference_time,

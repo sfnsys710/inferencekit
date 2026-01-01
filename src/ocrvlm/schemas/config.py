@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,59 +22,38 @@ class Settings(BaseSettings):
 
     # Model Configuration
     model_id: str = Field(
-        default="stepfun-ai/GOT-OCR-2.0-hf",
-        description="HuggingFace model identifier"
+        default="stepfun-ai/GOT-OCR-2.0-hf", description="HuggingFace model identifier"
     )
-    model_cache_dir: Optional[Path] = Field(
-        default=None,
-        description="Optional directory for caching downloaded models"
+    model_cache_dir: Path | None = Field(
+        default=None, description="Optional directory for caching downloaded models"
     )
 
     # Device Settings
     device: Literal["cpu", "mps", "cuda"] = Field(
-        default="cpu",
-        description="Device to use for inference"
+        default="cpu", description="Device to use for inference"
     )
 
     # Generation Parameters
-    max_new_tokens: int = Field(
-        default=4096,
-        description="Maximum number of tokens to generate"
-    )
-    do_sample: bool = Field(
-        default=False,
-        description="Whether to use sampling for generation"
-    )
+    max_new_tokens: int = Field(default=4096, description="Maximum number of tokens to generate")
+    do_sample: bool = Field(default=False, description="Whether to use sampling for generation")
     stop_strings: str = Field(
-        default="<|im_end|>",
-        description="String(s) that signal end of generation"
+        default="<|im_end|>", description="String(s) that signal end of generation"
     )
 
     # Image Processing
-    max_image_size_mb: int = Field(
-        default=10,
-        description="Maximum image size in megabytes"
-    )
+    max_image_size_mb: int = Field(default=10, description="Maximum image size in megabytes")
     supported_formats: set[str] = Field(
-        default={"jpg", "jpeg", "png", "bmp", "tiff"},
-        description="Supported image formats"
+        default={"jpg", "jpeg", "png", "bmp", "tiff"}, description="Supported image formats"
     )
 
     # Logging
     log_level: str = Field(
-        default="INFO",
-        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+        default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
     # API Settings
-    api_host: str = Field(
-        default="0.0.0.0",
-        description="API server host"
-    )
-    api_port: int = Field(
-        default=8080,
-        description="API server port"
-    )
+    api_host: str = Field(default="0.0.0.0", description="API server host")
+    api_port: int = Field(default=8080, description="API server port")
 
 
 @lru_cache

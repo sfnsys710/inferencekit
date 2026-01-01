@@ -1,7 +1,7 @@
 """GOT-OCR-2.0-hf model implementation."""
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import torch
 from PIL import Image
@@ -154,7 +154,7 @@ class GOTOCRModel(BaseOCRModel):
             # Decode output, skipping the input tokens
             logger.debug("Decoding output...")
             result = self.processor.decode(
-                generate_ids[0, inputs["input_ids"].shape[1]:],
+                generate_ids[0, inputs["input_ids"].shape[1] :],
                 skip_special_tokens=True,
             )
 

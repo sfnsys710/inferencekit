@@ -506,3 +506,15 @@ python scripts/stepfun_got_ocr.py --path test.jpg
 ## License
 
 MIT License
+
+## Roadmap
+
+Future improvements and tasks:
+
+- [ ] **Configuration validation**: Ensure all .env settings in config.py are actually used throughout the codebase
+- [ ] **Configuration documentation**: Document complete override hierarchy (CLI args > environment vars > .env defaults)
+- [ ] **Dependency cleanup**: Simplify pydantic-settings and python-multipart usage if possible
+- [ ] **Docker hardware testing**: Test and document Docker performance across different hardware (M2 CPU, Intel CPU, NVIDIA GPU)
+- [ ] **Documentation cleanup**: Review and consolidate documentation across README, CLAUDE.md, and code comments
+- [ ] **Performance benchmarking**: Create reproducible benchmarks for different hardware configurations
+- [ ] **Cloud deployment guide**: Add detailed GCP Cloud Run deployment instructions with cost estimates

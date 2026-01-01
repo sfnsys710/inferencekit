@@ -66,6 +66,16 @@ class Settings(BaseSettings):
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
+    # API Settings
+    api_host: str = Field(
+        default="0.0.0.0",
+        description="API server host"
+    )
+    api_port: int = Field(
+        default=8080,
+        description="API server port"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

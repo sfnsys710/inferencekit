@@ -10,7 +10,6 @@ from .content.image import ImageHandler
 from .models.base import BaseOCRModel
 from .models.got_ocr import GOTOCRModel
 from .schemas.config import GenerationConfig
-from .schemas.input import ImageInput
 from .schemas.output import OCRResult
 
 __version__ = "0.1.0"
@@ -26,6 +25,5 @@ __all__ = [
     "GOTOCRModel",
     # Schemas
     "GenerationConfig",
-    "ImageInput",
     "OCRResult",
 ]

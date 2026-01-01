@@ -13,7 +13,6 @@ py.typed
 
 # Model cache and data
 data/
-models/
 
 # ideas
 .idea/

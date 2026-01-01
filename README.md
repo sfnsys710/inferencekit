@@ -229,6 +229,216 @@ uv sync --group api  # Core + CLI + API
 uv sync --group dev  # Core + CLI + dev tools
 ```
 
+## Critical Analysis & Tradeoffs
+
+This section provides honest assessment of our architectural choices, their limitations, and when you should NOT use this approach.
+
+### Model Lifecycle: Per-Request Load/Unload
+
+**What we chose:**
+- Load model on each request (~26s)
+- Run inference (~80s)
+- Unload to free memory
+- Total: ~106s per request
+
+**Tradeoffs:**
+
+✅ **Advantages:**
+- Minimal idle memory usage (model unloaded between requests)
+- Can run on smaller/cheaper instances (4GB RAM vs 8GB+)
+- No state management complexity
+- Perfect for sporadic, low-volume use (few requests per hour)
+
+❌ **Disadvantages:**
+- **26-second cold start penalty on EVERY request** (not acceptable for many use cases)
+- Cannot handle concurrent requests efficiently (each needs full model load)
+- Wasteful for high-volume scenarios (repeatedly loading same model)
+- No request batching possible
+
+**When NOT to use this approach:**
+- **High volume**: >10 requests/hour → Use vLLM with model kept in memory
+- **Low latency required**: <10s response time needed → Keep model loaded
+- **Concurrent requests**: Multiple simultaneous users → Use model pooling or queuing
+- **Predictable traffic**: Steady request rate → Persistent model loading is more efficient
+
+**Alternatives:**
+1. **Keep model in memory**: 0s load time, but ~8GB RAM constantly used
+2. **vLLM with PagedAttention**: Efficient memory management + batching for high throughput
+3. **Model pooling**: Multiple instances with load balancing for concurrency
+4. **Hybrid approach**: Keep model loaded for N minutes after last request (lazy unload)
+
+### Hardware: CPU vs MPS vs CUDA
+
+**What we found (GOT-OCR-2.0-hf on M2):**
+- CPU: ~80s inference ✅ Recommended
+- MPS: ~220s inference (2.7x slower)
+- CUDA: Not tested
+
+**Critical analysis:**
+
+**CPU Mode (Recommended for M2):**
+- ✅ Fastest for this specific model on M2
+- ✅ Available on all hardware
+- ✅ Consistent performance
+- ❌ Slower than CUDA on NVIDIA GPUs
+- ❌ No parallelization benefits for this model
+
+**MPS Mode (Apple Silicon GPU):**
+- ❌ **2.7x slower than CPU for GOT-OCR-2.0-hf**
+- Why? Model architecture doesn't benefit from Metal acceleration
+- Memory transfers between CPU/GPU add overhead
+- **Do NOT use MPS for this specific model**
+
+**CUDA Mode (NVIDIA GPUs):**
+- ✅ Likely fastest option (15-30s inference on T4/A10G GPUs)
+- ✅ Better for high-volume production
+- ❌ Requires NVIDIA hardware ($$$)
+- ❌ Higher cloud costs (GPU instances 3-5x more expensive)
+- ❌ Not tested in this project
+
+**Cost implications:**
+- **M2 CPU**: Free (local) or ~$0.10/hour (cloud CPU instance)
+- **NVIDIA T4**: ~$0.35/hour (GCP/AWS GPU instance)
+- **NVIDIA A10G**: ~$0.80/hour (GCP/AWS GPU instance)
+
+**Decision matrix:**
+- **Development/testing**: M2 CPU (free, good enough)
+- **Low volume production (<50 requests/day)**: CPU instance ($5-10/month)
+- **High volume production (>100 requests/day)**: CUDA GPU (faster, but $250+/month)
+- **Apple Silicon only**: Stick with CPU, never use MPS
+
+### API Monitoring & Management Limitations
+
+**What we implemented:**
+- Basic Python logging (stdout/stderr)
+- Health endpoint for uptime checks
+- Response metadata (inference_time, model_id, device)
+- Error logging with stack traces
+
+**What we're MISSING (critical for production):**
+
+❌ **No structured logging**
+- Logs are plain text, not JSON
+- Hard to parse/query in log aggregation tools
+- No correlation IDs for request tracing
+
+❌ **No metrics collection**
+- No Prometheus/StatsD integration
+- Can't track: requests/sec, error rates, latency percentiles
+- No dashboards (Grafana, etc.)
+
+❌ **No usage tracking**
+- No per-user/API key tracking
+- Can't bill based on usage
+- Can't detect abuse or unusual patterns
+
+❌ **No rate limiting**
+- Vulnerable to abuse (someone can spam requests)
+- No quotas or throttling
+- Can exhaust server resources
+
+❌ **No request queuing**
+- Concurrent requests compete for resources
+- No backpressure mechanism
+- Server can be overwhelmed
+
+❌ **No distributed tracing**
+- Can't track requests across services
+- No OpenTelemetry/Jaeger integration
+- Hard to debug in multi-service environments
+
+**When our simple approach is insufficient:**
+1. **Production SaaS**: Need billing, quotas, abuse prevention → Add API gateway (Kong, Tyk)
+2. **Multi-tenant**: Need per-user tracking → Add authentication + usage metering
+3. **High reliability**: Need SLAs, monitoring, alerts → Add Prometheus + Grafana + PagerDuty
+4. **Microservices**: Need distributed tracing → Add OpenTelemetry
+5. **Compliance**: Need audit logs → Add structured JSON logging with retention policies
+
+**Production-ready monitoring stack:**
+```bash
+# What you'd need to add:
+- API Gateway: Kong/Tyk (rate limiting, auth, usage tracking)
+- Metrics: Prometheus + Grafana (dashboards, alerts)
+- Logging: Structured JSON → ELK/Loki (search, analysis)
+- Tracing: OpenTelemetry → Jaeger (distributed tracing)
+- Alerting: PagerDuty/Opsgenie (incident response)
+```
+
+### FastAPI vs Ollama vs vLLM: What We're Giving Up
+
+**What we chose: FastAPI with manual model management**
+
+**vs Ollama:**
+
+✅ **We gain:**
+- Full control over model lifecycle
+- Works with vision-language models (Ollama focused on chat LLMs)
+- Simpler for OCR-specific tasks
+- No Ollama installation/configuration needed
+
+❌ **We lose:**
+- No built-in model management (pull, update, list models)
+- No built-in prompt templating
+- No multi-model serving out of the box
+- No chat history/conversation management
+- Manual implementation of everything
+
+**vs vLLM:**
+
+✅ **We gain:**
+- Simpler codebase (no complex serving infrastructure)
+- Works for low-volume use (vLLM optimized for throughput)
+- Lower resource requirements (vLLM needs GPU + more RAM)
+- Vision-language model support without constraints
+
+❌ **We lose:**
+- **No PagedAttention** (efficient memory management for KV cache)
+- **No continuous batching** (process multiple requests in parallel)
+- **No request queuing** (vLLM handles concurrent requests gracefully)
+- **3-10x slower throughput** for high-volume scenarios
+- No tensor parallelism (vLLM can split model across GPUs)
+- No automatic quantization/optimization
+
+**When you SHOULD use the alternatives:**
+
+**Choose Ollama if:**
+- You want a complete LLM serving solution with minimal code
+- You're serving chat models (Llama, Mistral, etc.)
+- You want model management features (pull, update, versioning)
+- You need conversation history and prompt templating
+
+**Choose vLLM if:**
+- High throughput required (>100 requests/hour)
+- You have GPU resources available
+- You need concurrent request handling
+- You want state-of-the-art serving optimizations
+- You're serving pure LLMs (vLLM has best support for text models)
+
+**Choose our FastAPI approach if:**
+- Low volume, occasional use (<50 requests/day)
+- Vision-language OCR tasks (not pure chat)
+- Need full control over model lifecycle
+- Want to minimize idle resource usage
+- Experimenting or prototyping
+
+### Summary: This Project Is Optimized For...
+
+✅ **Perfect use cases:**
+- Personal OCR tool (few images per day)
+- Internal company tool (sporadic document processing)
+- Development/testing of GOT-OCR model
+- Cost-sensitive deployments (minimize idle costs)
+- Learning project for VLM deployment
+
+❌ **Wrong use cases:**
+- High-volume OCR service (>100 images/day) → Use vLLM + GPU
+- Low-latency requirements (<10s response) → Keep model in memory
+- Multi-tenant SaaS → Need API gateway, metering, monitoring
+- Production-critical system → Need proper monitoring, alerting, SLAs
+- Concurrent users → Need request queuing or model pooling
+
+**If your use case is in the "wrong" category, this architecture will cause pain. Choose the right tool for your actual needs.**
+
 ## Performance Characteristics
 
 **On Apple Silicon M2:**

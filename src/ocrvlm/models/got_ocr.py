@@ -7,8 +7,7 @@ import torch
 from PIL import Image
 from transformers import AutoModelForImageTextToText, AutoProcessor
 
-from ..config import Settings
-from ..schemas.config import GenerationConfig
+from ..schemas.config import Settings
 from .base import BaseOCRModel
 
 logger = logging.getLogger(__name__)
@@ -113,7 +112,7 @@ class GOTOCRModel(BaseOCRModel):
         """
         return self._loaded
 
-    def generate(self, image: Image.Image, generation_config: GenerationConfig) -> str:
+    def generate(self, image: Image.Image, settings: Settings) -> str:
         """Run OCR inference on an image.
 
         Implementation based on notebooks/stepfun-got-ocr.ipynb validation.
@@ -121,7 +120,7 @@ class GOTOCRModel(BaseOCRModel):
 
         Args:
             image: PIL Image to perform OCR on
-            generation_config: Configuration for text generation
+            settings: Application settings including generation parameters
 
         Returns:
             Extracted text from the image
@@ -146,10 +145,10 @@ class GOTOCRModel(BaseOCRModel):
             with torch.no_grad():
                 generate_ids = self.model.generate(
                     **inputs,
-                    do_sample=generation_config.do_sample,
+                    do_sample=settings.do_sample,
                     tokenizer=self.processor.tokenizer,
-                    stop_strings=generation_config.stop_strings,
-                    max_new_tokens=generation_config.max_new_tokens,
+                    stop_strings=settings.stop_strings,
+                    max_new_tokens=settings.max_new_tokens,
                 )
 
             # Decode output, skipping the input tokens

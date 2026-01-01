@@ -8,7 +8,7 @@ from typing import Union
 import requests
 from PIL import Image
 
-from ..config import Settings
+from ..schemas.config import Settings
 
 logger = logging.getLogger(__name__)
 

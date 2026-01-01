@@ -97,8 +97,7 @@ def stepfun_got_ocr(
     # Run inference
     logger.info("Running OCR inference (this may take ~80 seconds on CPU)...")
     inference_start = time.time()
-    generation_config = settings.generation_config
-    text = model.generate(image, generation_config)
+    text = model.generate(image, settings)
     inference_time = time.time() - inference_start
 
     # Create result

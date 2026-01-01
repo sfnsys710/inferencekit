@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from PIL import Image
 
-from ..schemas.config import GenerationConfig
+from ..schemas.config import Settings
 
 
 class BaseOCRModel(ABC):
@@ -37,12 +37,12 @@ class BaseOCRModel(ABC):
         pass
 
     @abstractmethod
-    def generate(self, image: Image.Image, generation_config: GenerationConfig) -> str:
+    def generate(self, image: Image.Image, settings: Settings) -> str:
         """Run OCR inference on an image.
 
         Args:
             image: PIL Image to perform OCR on
-            generation_config: Configuration for text generation
+            settings: Application settings including generation parameters
 
         Returns:
             Extracted text from the image

@@ -23,8 +23,9 @@ cp .env.example .env
 ```
 
 ### Running OCR
+
+**CLI (Phase 3):**
 ```bash
-# CLI script (Phase 3 - Complete)
 python scripts/stepfun_got_ocr.py --path image.jpg
 python scripts/stepfun_got_ocr.py --url https://example.com/image.jpg
 python scripts/stepfun_got_ocr.py --path image.jpg --device cpu --output result.txt
@@ -33,6 +34,23 @@ python scripts/stepfun_got_ocr.py --path image.jpg --device cpu --output result.
 # --device: cpu/mps/cuda (overrides .env setting)
 # --output: file path to save result
 # --max_tokens: override max_new_tokens setting
+```
+
+**API Server (Phase 4):**
+```bash
+# Start server
+uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
+
+# Test endpoints
+curl http://localhost:8080/health
+curl http://localhost:8080/ocr  # API info
+curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com/image.jpg"}' http://localhost:8080/ocr/url
+
+# View auto-generated docs
+# Swagger UI: http://localhost:8080/docs
+# ReDoc: http://localhost:8080/redoc
 ```
 
 ### Development
@@ -56,7 +74,7 @@ jupyter notebook notebooks/
 ### Package Structure
 
 ```
-src/ocrvlm/
+src/ocrvlm/              # Core reusable modules
 ├── __init__.py          # Public API exports
 ├── content/
 │   └── image.py         # ImageHandler with load_from_url() and load_from_path()
@@ -64,8 +82,15 @@ src/ocrvlm/
 │   ├── base.py          # BaseOCRModel abstract interface
 │   └── got_ocr.py       # GOTOCRModel implementation
 └── schemas/
-    ├── config.py        # Settings class (all configuration)
+    ├── config.py        # Settings class (all configuration including API)
     └── output.py        # OCRResult dataclass
+
+scripts/                 # CLI entry points (standalone, no __init__.py)
+└── stepfun_got_ocr.py  # Function-based CLI using Fire
+
+api/                     # FastAPI server (simple structure)
+├── main.py             # FastAPI app with all endpoints
+└── schemas.py          # API request/response models
 ```
 
 ### Key Components
@@ -73,8 +98,9 @@ src/ocrvlm/
 **Settings (`schemas/config.py`):**
 - Loads from `.env` file using pydantic-settings
 - Single source of truth for all configuration
-- Includes model config, device settings, generation parameters, image processing limits, and logging level
+- Includes model config, device settings, generation parameters, image processing limits, logging level, and **API settings** (api_host, api_port)
 - Cached singleton via `get_settings()`
+- Used by both CLI and API
 
 **ImageHandler (`content/image.py`):**
 - Two explicit methods: `load_from_url()` and `load_from_path()`
@@ -96,17 +122,49 @@ src/ocrvlm/
 **OCRResult (`schemas/output.py`):**
 - Dataclass for inference results
 - Includes text, model_id, inference_time, timestamp, device
-- Has `to_dict()` method for JSON serialization (future API use)
+- Has `to_dict()` method for JSON serialization (used by API)
+
+**FastAPI Server (`api/main.py`):**
+- Simple structure: all endpoints in one file (main.py)
+- Separate schema file for request/response models (schemas.py)
+- **Model lifecycle**: Load per request, unload after completion (~106s total: 26s load + 80s inference)
+- Uses same core modules (ImageHandler, GOTOCRModel, OCRResult)
+- Settings loaded from `.env` only (no per-request overrides)
+- No API versioning (direct paths like `/ocr/upload`)
+
+**API Endpoints:**
+- `GET /` - Root endpoint
+- `GET /ocr` - API info and capabilities
+- `GET /health` - Health check for monitoring
+- `POST /ocr/upload` - File upload OCR (mirrors CLI `--path`)
+- `POST /ocr/url` - URL-based OCR (mirrors CLI `--url`)
+
+**API Schemas (`api/schemas.py`):**
+- `OCRUrlRequest` - Request model for URL endpoint (pydantic HttpUrl validation)
+- `OCRResponse` - Unified response model (mirrors OCRResult.to_dict())
 
 ### Data Flow
 
-1. Script validates explicit `--path` or `--url` parameter (mutually exclusive, one required)
+**CLI Flow (scripts/stepfun_got_ocr.py):**
+1. Validate explicit `--path` or `--url` parameter (mutually exclusive, one required)
 2. ImageHandler loads and validates image via appropriate method
 3. GOTOCRModel loads model (if not already loaded)
 4. Model runs inference with Settings parameters (max_new_tokens, do_sample, stop_strings)
 5. Returns extracted text as string
 6. Optional: Save to output file if `--output` specified
 7. Model cleanup via `unload()`
+
+**API Flow (api/main.py):**
+1. HTTP request received (file upload or URL)
+2. For uploads: Save to tempfile, use `load_from_path()`; For URLs: Use `load_from_url()`
+3. ImageHandler validates format and size
+4. GOTOCRModel instance created and loaded (~26s)
+5. Model runs inference (~80s on CPU)
+6. Model unloaded to free memory
+7. OCRResult created and converted to JSON response via `to_dict()`
+8. Temp file cleanup (upload endpoint only)
+
+**Key difference**: CLI can override settings via parameters; API uses `.env` settings only
 
 ## Important Notes
 
@@ -132,10 +190,25 @@ When creating new scripts in `scripts/`:
 - Always validate format and size after loading
 - Let exceptions propagate (ValueError, FileNotFoundError)
 
+### API Development Guidelines
+When working with the FastAPI server in `api/`:
+- Keep it simple: all endpoints in `main.py`, schemas in `schemas.py`
+- Model loads per request (not at startup) - this is intentional for occasional use pattern
+- Use `tempfile.NamedTemporaryFile` for upload handling
+- Clean up temp files in finally block
+- Map exceptions to HTTP status codes:
+  - `ValueError` → 400 Bad Request
+  - `FileNotFoundError` → 404 Not Found
+  - URL download errors → 422 Unprocessable Entity
+  - Other errors → 500 Internal Server Error
+- No per-request setting overrides (simpler than CLI)
+- No API versioning (keep paths simple)
+- FastAPI auto-generates docs at `/docs` and `/redoc`
+
 ## Project Status
 
 - ✅ **Phase 1**: M2 compatibility validation (notebooks/first.ipynb)
 - ✅ **Phase 2**: Core reusable modules (src/ocrvlm/)
 - ✅ **Phase 3**: CLI script (scripts/stepfun_got_ocr.py)
-- 🔜 **Phase 4**: FastAPI REST API (api/)
+- ✅ **Phase 4**: FastAPI REST API (api/main.py, api/schemas.py)
 - 🔜 **Phase 5**: Docker containerization for GCP Cloud Run

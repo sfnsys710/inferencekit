@@ -24,7 +24,7 @@ cp .env.example .env
 
 ### Running OCR
 
-**CLI (Phase 3):**
+**CLI:**
 ```bash
 python scripts/stepfun_got_ocr.py --path image.jpg
 python scripts/stepfun_got_ocr.py --url https://example.com/image.jpg
@@ -36,7 +36,7 @@ python scripts/stepfun_got_ocr.py --path image.jpg --device cpu --output result.
 # --max_tokens: override max_new_tokens setting
 ```
 
-**API Server (Phase 4):**
+**API Server:**
 ```bash
 # Start server
 uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
@@ -59,7 +59,7 @@ curl -X POST -H "Content-Type: application/json" \
 jupyter notebook notebooks/
 ```
 
-### Docker (Phase 5)
+### Docker
 
 **Building and running locally:**
 ```bash
@@ -240,10 +240,12 @@ When working with Docker containerization:
 - **Environment variables**: Support runtime overrides via `-e` flags
 - **.dockerignore**: Exclude notebooks, tests, dev files, .env, .git from build context
 
-## Project Status
+## Project Components
 
-- ✅ **Phase 1**: M2 compatibility validation (notebooks/first.ipynb)
-- ✅ **Phase 2**: Core reusable modules (src/ocrvlm/)
-- ✅ **Phase 3**: CLI script (scripts/stepfun_got_ocr.py)
-- ✅ **Phase 4**: FastAPI REST API (api/main.py, api/schemas.py)
-- ✅ **Phase 5**: Docker containerization (Dockerfile, .dockerignore)
+The project is complete and includes:
+
+- **Core modules** (`src/ocrvlm/`): Reusable OCR components with ImageHandler, GOTOCRModel, and Settings
+- **CLI interface** (`scripts/stepfun_got_ocr.py`): Command-line tool for local OCR processing
+- **REST API** (`api/`): FastAPI server with file upload and URL-based OCR endpoints
+- **Docker support** (`Dockerfile`): Multi-stage containerization for cloud deployment
+- **Experimentation** (`notebooks/`): Jupyter notebooks for M2 compatibility validation and testing

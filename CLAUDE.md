@@ -59,6 +59,24 @@ curl -X POST -H "Content-Type: application/json" \
 jupyter notebook notebooks/
 ```
 
+### Docker (Phase 5)
+
+**Building and running locally:**
+```bash
+# Build Docker image
+docker build -t ocrvlm:latest .
+
+# Run container
+docker run -p 8080:8080 ocrvlm:latest
+
+# Run with environment overrides
+docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrvlm:latest
+
+# Test the containerized API
+curl http://localhost:8080/health
+curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
+```
+
 ## Architecture
 
 ### Core Design Principles
@@ -205,10 +223,27 @@ When working with the FastAPI server in `api/`:
 - No API versioning (keep paths simple)
 - FastAPI auto-generates docs at `/docs` and `/redoc`
 
+### Docker Development Guidelines
+When working with Docker containerization:
+- **Multi-stage builds**: Use builder stage for dependency installation, slim runtime for production
+- **Python version consistency**: Match python version in both Dockerfile stages with pyproject.toml (3.12)
+- **UV dependency groups**: Separate dependencies into groups in pyproject.toml:
+  - Core dependencies (main): torch, transformers, pillow, pydantic, pydantic-settings, fire
+  - API group: fastapi, uvicorn[standard], python-multipart
+  - Dev group: jupyter (excluded from Docker build)
+- **UV environment variables**:
+  - `UV_PYTHON_DOWNLOADS=0` - Use system Python, don't download
+  - `UV_COMPILE_BYTECODE=1` - Compile bytecode for faster startup
+- **Layer caching**: Install dependencies before copying source code
+- **Minimal runtime**: Use `python:3.12-slim-bookworm` for small image size
+- **Port 8080**: Standard for Cloud Run compatibility
+- **Environment variables**: Support runtime overrides via `-e` flags
+- **.dockerignore**: Exclude notebooks, tests, dev files, .env, .git from build context
+
 ## Project Status
 
 - ✅ **Phase 1**: M2 compatibility validation (notebooks/first.ipynb)
 - ✅ **Phase 2**: Core reusable modules (src/ocrvlm/)
 - ✅ **Phase 3**: CLI script (scripts/stepfun_got_ocr.py)
 - ✅ **Phase 4**: FastAPI REST API (api/main.py, api/schemas.py)
-- 🔜 **Phase 5**: Docker containerization for GCP Cloud Run
+- ✅ **Phase 5**: Docker containerization (Dockerfile, .dockerignore)

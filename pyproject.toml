@@ -1,5 +1,5 @@
 [project]
-name = "ocrvlm"
+name = "inferencekit"
 version = "0.2.0"
 description = "OCR experiments with Vision Language Models"
 readme = "README.md"

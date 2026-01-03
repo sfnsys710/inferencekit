@@ -5,10 +5,10 @@ Building blocks for running inference on various models (OCR, text generation, e
 ## Features
 
 - Multi-model support: Vision Language Models (GOT-OCR) and text models (Qwen3)
-- Optimized for Apple Silicon M2 (CPU mode for OCR)
+- Optimized for Apple Silicon M2 development (CPU mode for OCR)
+- Production-ready deployment on GCP Cloud Run with GPU acceleration
 - Dual interfaces: CLI and REST API
-- Containerized deployment ready for GCP Cloud Run
-- Designed for low-volume, occasional use (~106s per OCR request including model load)
+- Designed for moderately frequent, non-concurrent use (significantly faster inference on GPU vs local CPU)
 
 ## Quick Start
 
@@ -87,6 +87,54 @@ docker run -p 8080:8080 inferencekit:latest
 docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
 ```
 
+## Model Selection Rationale
+
+### Open Source vs Closed Source: Strategic Decision
+
+This project uses open-source models (GOT-OCR-2.0-hf, Qwen3) instead of closed-source alternatives (Claude, GPT-4). Here's the analysis:
+
+| Aspect | Closed-Source (Claude/GPT) | Open-Source (GOT-OCR/Qwen3) | Our Choice |
+|--------|---------------------------|----------------------------|------------|
+| **Raw Quality** | 15-25% higher on benchmarks | Good enough for most tasks | Open ✓ |
+| **Cost** | $0.50-$15 per 1M tokens | Free (compute only) | Open ✓ |
+| **Latency** | Network round-trip required | Local = faster for dev | Open ✓ |
+| **Privacy** | Data sent to third party | 100% on-premise | Open ✓ |
+| **Customization** | Limited to prompting | Fine-tuning possible | Open ✓ |
+| **Deployment** | API dependency | Full control | Open ✓ |
+
+**Verdict:** For moderately frequent, privacy-conscious use cases, the 15-25% quality gap is acceptable. Open-source provides full control, zero API costs, and on-premise deployment.
+
+### Why Qwen3 for Text Generation?
+
+| Model | Size | MMLU | IFEval | GSM8K | Context | Key Advantage |
+|-------|------|------|--------|-------|---------|---------------|
+| **Qwen3-4B** | 4B | ~68% | ~72% | ~80% | 128K | Architecture upgrade, 40% faster than Qwen2.5 |
+| SmolLM3-3B | 3B | ~65% | ~70% | ~75% | 128K | Good alternative, 6 languages |
+| Qwen2.5-3B | 3B | ~62% | ~65% | ~70% | 128K | Previous generation |
+| Phi-3 Mini | 3.8B | ~69% | ~68% | ~75% | 128K | Microsoft, comparable |
+
+**Qwen3 chosen for:** Best IFEval score (instruction-following critical for RAG), major architecture improvements over Qwen2.5, strong multilingual support, and active development community.
+
+### Model Naming Conventions Primer
+
+Understanding model suffixes is critical for deployment:
+
+**Training Suffixes:**
+| Suffix | Purpose | Use Case |
+|--------|---------|----------|
+| **-Instruct** | Fine-tuned for instructions | Chat, Q&A, RAG (our use case) |
+| **-Base** | Pretrained only | Text completion, fine-tuning |
+| **-Coder** | Code generation | Programming tasks |
+
+**Format Suffixes:**
+| Format | Runtime | Hardware | Size | Quality Loss |
+|--------|---------|----------|------|--------------|
+| **Safetensors** | transformers | Any (GPU preferred) | 100% | None |
+| **GGUF** | llama.cpp | CPU, Apple Metal | 25-50% | 1-5% |
+| **GPTQ/AWQ** | AutoGPTQ/vLLM | NVIDIA GPU only | 25-50% | 1-3% |
+
+**Our deployment:** Safetensors format with transformers runtime for maximum quality and GPU compatibility.
+
 ## Architecture
 
 ### Tech Stack
@@ -115,36 +163,109 @@ inferencekit/
 
 ### Model Lifecycle: Per-Request Load/Unload
 
-The API uses a **per-request model lifecycle** intentionally designed for occasional use:
+The API uses a **per-request model lifecycle** intentionally designed for moderately frequent, non-concurrent use:
 
-1. Request received → Load model (~26s)
-2. Run inference (~80s on M2 CPU)
+1. Request received → Load model (~5-10s on GPU, ~26s on M2 CPU)
+2. Run inference (~15-25s on GPU, ~80s on M2 CPU)
 3. Unload model to free memory
-4. Total: ~106s per request
+4. Total: ~20-35s per request on GPU, ~106s on M2
 
 **Why not keep model in memory?**
-- This project targets low-volume, occasional use (not high-throughput serving)
-- Freeing memory between requests allows the server to run on smaller instances
-- For high-volume use, consider dedicated serving solutions like vLLM or Ollama
+- This project targets moderately frequent, non-concurrent use (10-50 requests/day)
+- Freeing memory between requests enables Cloud Run scale-to-zero cost savings
+- For high concurrency or 24/7 use, consider vLLM with persistent instances
 
-### Hardware Tradeoffs
+### Hardware Optimization Strategy
 
-**Critical: Use CPU mode on M2 for this model**
+**Performance comparison across hardware backends:**
 
-Performance comparison on Apple Silicon M2:
-- **CPU**: ~80s inference (recommended)
-- **MPS**: ~220s inference (2.7x slower)
-- **CUDA**: Not tested (requires NVIDIA GPU)
+| Backend | M2 Dev | Cloud GPU | Quality | Memory | Our Use |
+|---------|--------|-----------|---------|--------|---------|
+| **CPU** | ~80s inference | ~30-40s (less optimal) | Full precision | 3GB | ✓ M2 dev |
+| **MPS** (Apple Metal) | ~220s (2.7x slower!) | N/A | Full precision | 3GB | ✗ Never use |
+| **CUDA** (NVIDIA) | N/A | ~15-25s (optimal) | Full precision | 4GB | ✓✓ Production |
+| **MLX** (Apple Silicon) | Not tested | N/A | Full precision | ~3GB | ⚠ Future consideration |
 
-The GOT-OCR-2.0-hf model performs better on CPU than MPS for this specific architecture. This is configured via the `DEVICE` setting in `.env`.
+**Critical finding:** GOT-OCR-2.0-hf performs **2.7x slower** on MPS vs CPU on M2. This is model-architecture specific.
+
+**Hardware decision matrix:**
+
+| Environment | Hardware | Backend | Rationale |
+|-------------|----------|---------|-----------|
+| **M2 Development** | Apple Silicon | CPU | Fastest on M2 (MPS unusable), adequate for testing |
+| **Cloud Run Production** | NVIDIA L4/T4 | CUDA | 3-5x faster than M2 CPU, cost-effective GPU |
+| **High-volume (future)** | NVIDIA A10G/A100 | CUDA | If scaling beyond moderate frequency |
+
+**Cost-performance tradeoff:**
+
+| Deployment | Hardware | Inference Time | Cost/Hour | Cost/1K Requests | Use Case |
+|------------|----------|----------------|-----------|------------------|----------|
+| M2 Local | CPU | ~80s | $0 (local) | $0 | Development, testing |
+| Cloud Run CPU | Intel/AMD | ~50-60s | ~$0.10 | ~$1.50 | Budget (not recommended) |
+| Cloud Run GPU (L4) | NVIDIA L4 | ~15-25s | ~$0.60 | ~$2.50 | Production (chosen) ✓ |
+| Cloud Run GPU (T4) | NVIDIA T4 | ~20-30s | ~$0.35 | ~$1.50 | Budget GPU alternative |
 
 **Configuration:**
 ```bash
 # .env file
-DEVICE=cpu  # Use CPU (fastest on M2)
-# DEVICE=mps  # Not recommended - slower than CPU
-# DEVICE=cuda  # For NVIDIA GPUs
+DEVICE=cpu   # M2 dev (fastest on Apple Silicon for this model)
+# DEVICE=cuda  # Cloud Run GPU production
+# DEVICE=mps   # NEVER use - 2.7x slower than CPU
 ```
+
+**Why not MPS?** The GOT-OCR model's architecture doesn't benefit from Metal acceleration. Memory transfers between CPU/GPU add overhead without computational gains. Always use CPU on M2.
+
+### Deployment Strategy
+
+**Production deployment options analysis:**
+
+| Platform | GPU Support | Scale-to-Zero | Ops Overhead | Cold Start | Cost Model | Our Fit |
+|----------|-------------|---------------|--------------|------------|------------|---------|
+| **Cloud Run (GPU)** | ✓✓ L4/T4 | ✓✓ Native | Very Low | ~30s | Pay-per-use | ✓✓ Chosen |
+| Cloud Run (CPU) | ✗ | ✓✓ Native | Very Low | ~15s | Pay-per-use | ⚠ Too slow |
+| Kubernetes (GKE) | ✓ Any GPU | ⚠ KEDA | High | ~0s (persistent) | Always-on | ✗ Overkill |
+| VM with GPU | ✓ Any GPU | ✗ Manual | Medium | ~0s (persistent) | Always-on (~$500/mo) | ✗ Expensive |
+| vLLM Server | ✓✓ Optimized | ✗ | Medium | ~0s (persistent) | Always-on | ✗ High concurrency only |
+
+**Tradeoff analysis:**
+
+| Option | Advantages | Disadvantages | Decision |
+|--------|-----------|---------------|----------|
+| **Cloud Run GPU** (chosen) | Serverless (no ops), scale-to-zero, GPU support, pay-per-use | Cold starts (~30s), limited GPU options (L4/T4) | ✓ **Best for moderate frequency** |
+| Kubernetes | Full control, any GPU, persistent (no cold start) | Complex ops, always-on costs, requires DevOps expertise | ✗ Moderate use doesn't justify complexity |
+| VM with persistent GPU | Zero cold start, maximum performance | $400-600/month idle cost, manual scaling, wasted capacity | ✗ Not cost-effective for non-24/7 use |
+| Cloud Run CPU | Cheapest ($0.10/hr), fast cold start | 3-4x slower inference, poor user experience | ✗ Unacceptable latency |
+
+**Our requirements mapping:**
+
+| Requirement | Cloud Run GPU | Kubernetes | VM + GPU | Verdict |
+|-------------|---------------|------------|----------|---------|
+| **Moderate frequency** | ✓ Pay-per-use saves money | ✗ Always-on wasteful | ✗ Idle cost high | Cloud Run ✓ |
+| **Non-concurrent** | ✓ Single instance OK | ⚠ Overkill for no parallelism | ✓ Works | Cloud Run ✓ |
+| **Low ops overhead** | ✓✓ Serverless | ✗ Requires K8s expertise | ⚠ VM management | Cloud Run ✓ |
+| **GPU acceleration** | ✓ L4/T4 available | ✓ Any GPU | ✓ Any GPU | All work ✓ |
+| **Cost optimization** | ✓ Scale-to-zero | ✗ Always-on | ✗ Always-on | Cloud Run ✓ |
+
+**Final architecture:**
+```
+Development:     M2 (CPU) → transformers → Local testing
+Production:      Cloud Run (GPU L4) → transformers → CUDA inference
+Traffic pattern: Moderate frequency, non-concurrent requests
+Scaling:         0 → N instances (auto), typically 1 instance
+Cost model:      Pay only during inference (~$0.60/hr active)
+```
+
+**Why Cloud Run GPU wins:**
+1. **Moderate frequency = pay-per-use is cheaper** than always-on GPU VM ($50-100/month vs $500/month)
+2. **Non-concurrent = serverless autoscaling perfect**, no need for K8s complexity
+3. **Low ops = serverless deployment**, just `gcloud run deploy`
+4. **GPU support = L4 GPUs** available (T4 also option)
+5. **Same codebase** as M2 dev (transformers everywhere)
+
+**When to reconsider:**
+- **High frequency (24/7)**: Persistent GPU VM becomes cheaper
+- **High concurrency**: Kubernetes + horizontal pod autoscaling
+- **Custom GPU needs**: GKE for A100/H100 access
 
 ### Configuration Management
 
@@ -212,24 +333,41 @@ gcloud run services update inferencekit \
 
 ## Design Decisions
 
-### Why Docker + FastAPI?
+### Infrastructure Stack: transformers + FastAPI + Docker
 
-**FastAPI chosen over Ollama/vLLM:**
-- **Ollama**: Designed for chat models, not vision-language OCR tasks
-- **vLLM**: Optimized for high-throughput LLM serving with continuous batching
-- **FastAPI**: Lightweight, gives full control over model lifecycle, perfect for occasional-use pattern
+**Runtime comparison matrix:**
 
-**Our use case:**
-- Low volume (occasional requests, not continuous serving)
-- Vision-language model (not pure LLM)
-- Need per-request load/unload to minimize resource usage
-- Simple REST API without complex serving optimizations
+| Aspect | transformers+FastAPI | vLLM | Ollama | llama-cpp-python |
+|--------|---------------------|------|--------|------------------|
+| **M2 Dev** | ✓ CPU (adequate) | ✗ CUDA only | ✓ Metal (fast) | ✓✓ Metal (fastest) |
+| **GPU Prod** | ✓✓ CUDA (optimal) | ✓✓ CUDA (best) | ✓ CUDA (good) | ⚠ CUDA (immature) |
+| **Integration** | Native Python | OpenAI API | HTTP proxy | Native Python |
+| **VLM Support** | ✓✓ Excellent | ⚠ Limited | ✗ Chat only | ✓ Good |
+| **Batching** | Manual | ✓✓ Continuous | ✗ None | ✗ None |
+| **Model Format** | Safetensors (full quality) | Safetensors/AWQ | GGUF (quantized) | GGUF (quantized) |
+| **Ops Complexity** | Low | Medium | Low | Low |
+| **Our Use Case Fit** | ✓✓ Perfect | ⚠ Overkill | ✗ Wrong type | ⚠ Wrong target |
 
-**For high-volume OCR serving**, consider:
-- vLLM with continuous batching
-- Dedicated GPU instances
-- Model kept in memory
-- Request queuing and batching
+**Tradeoffs analysis:**
+
+| Choice | What We Gain | What We Lose | Verdict |
+|--------|--------------|--------------|---------|
+| **transformers** (chosen) | Full quality (no quantization), VLM support, GPU optimization, HuggingFace ecosystem | Slower M2 dev vs llama-cpp, No continuous batching | ✓ **Best for our case** |
+| vLLM | 3-5x throughput, continuous batching, PagedAttention | Complexity, CUDA-only, OpenAI API overhead | ✗ Overkill for non-concurrent |
+| Ollama | Easy M2 dev, model management | No VLM support, HTTP overhead, chat-focused | ✗ Wrong model type |
+| llama-cpp | Fast M2 dev (Metal), small models (GGUF) | Quality loss (quantization), weak GPU support | ✗ Targeting GPU prod |
+
+**Our requirements analysis:**
+
+| Requirement | Value | Eliminated Options | Winner |
+|-------------|-------|-------------------|--------|
+| **Traffic pattern** | Moderately frequent, non-concurrent | vLLM (needs concurrency) | transformers ✓ |
+| **Model type** | Vision-language (GOT-OCR) | Ollama (chat only) | transformers ✓ |
+| **Deployment target** | Cloud Run GPU | llama-cpp (CPU-optimized) | transformers ✓ |
+| **Quality priority** | Full precision | GGUF-based (quantized) | transformers ✓ |
+| **Dev environment** | M2 CPU acceptable | vLLM (needs GPU) | transformers ✓ |
+
+**Decision:** transformers + FastAPI + Docker provides the optimal balance for moderately frequent, non-concurrent vision-language inference with GPU production deployment.
 
 ### Dependency Groups
 
@@ -254,36 +392,32 @@ This section provides honest assessment of our architectural choices, their limi
 ### Model Lifecycle: Per-Request Load/Unload
 
 **What we chose:**
-- Load model on each request (~26s)
-- Run inference (~80s)
+- Load model on each request (~26s on M2 CPU, ~5-10s on Cloud Run GPU)
+- Run inference (~80s on M2 CPU, ~15-25s on Cloud Run GPU)
 - Unload to free memory
-- Total: ~106s per request
+- Total: ~106s per request on M2, ~20-35s on Cloud Run GPU
 
-**Tradeoffs:**
+**Tradeoff analysis:**
 
-✅ **Advantages:**
-- Minimal idle memory usage (model unloaded between requests)
-- Can run on smaller/cheaper instances (4GB RAM vs 8GB+)
-- No state management complexity
-- Perfect for sporadic, low-volume use (few requests per hour)
+| Aspect | Per-Request Load (our choice) | Persistent In-Memory | vLLM + Batching |
+|--------|------------------------------|---------------------|-----------------|
+| **Load time** | 5-26s per request | 0s (one-time startup) | 0s (one-time startup) |
+| **Memory idle** | ~500MB (scale-to-zero) | ~8GB constantly | ~8-12GB constantly |
+| **Concurrency** | Sequential only | Limited | Excellent (batching) |
+| **Cost (moderate use)** | $50-100/month | $300-500/month | $500-800/month |
+| **Best for** | Moderate frequency, non-concurrent | High frequency, single-user | High concurrency |
 
-❌ **Disadvantages:**
-- **26-second cold start penalty on EVERY request** (not acceptable for many use cases)
-- Cannot handle concurrent requests efficiently (each needs full model load)
-- Wasteful for high-volume scenarios (repeatedly loading same model)
-- No request batching possible
+**Our rationale:** At 10-50 requests/day (moderately frequent) with Cloud Run GPU scale-to-zero, per-request loading costs ~$50-100/month vs ~$500/month for always-on GPU. The 5-10s GPU load time is acceptable for non-real-time workflows.
 
 **When NOT to use this approach:**
-- **High volume**: >10 requests/hour → Use vLLM with model kept in memory
-- **Low latency required**: <10s response time needed → Keep model loaded
-- **Concurrent requests**: Multiple simultaneous users → Use model pooling or queuing
-- **Predictable traffic**: Steady request rate → Persistent model loading is more efficient
+- **High concurrency**: Multiple simultaneous users → Use vLLM with batching
+- **Ultra-low latency**: <5s total response time → Keep model in memory
+- **24/7 high volume**: >200 requests/day → Persistent GPU instance cheaper
 
 **Alternatives:**
-1. **Keep model in memory**: 0s load time, but ~8GB RAM constantly used
-2. **vLLM with PagedAttention**: Efficient memory management + batching for high throughput
-3. **Model pooling**: Multiple instances with load balancing for concurrency
-4. **Hybrid approach**: Keep model loaded for N minutes after last request (lazy unload)
+- **Persistent in-memory**: 0s load, but $400-600/month always-on GPU cost
+- **vLLM + batching**: For high concurrency (>10 concurrent users)
+- **Hybrid (min_instances=1)**: For frequent bursts, accepts ~$16/day minimum cost
 
 ### Hardware: CPU vs MPS vs CUDA
 
@@ -324,63 +458,6 @@ This section provides honest assessment of our architectural choices, their limi
 - **Low volume production (<50 requests/day)**: CPU instance ($5-10/month)
 - **High volume production (>100 requests/day)**: CUDA GPU (faster, but $250+/month)
 - **Apple Silicon only**: Stick with CPU, never use MPS
-
-### API Monitoring & Management Limitations
-
-**What we implemented:**
-- Basic Python logging (stdout/stderr)
-- Health endpoint for uptime checks
-- Response metadata (inference_time, model_id, device)
-- Error logging with stack traces
-
-**What we're MISSING (critical for production):**
-
-❌ **No structured logging**
-- Logs are plain text, not JSON
-- Hard to parse/query in log aggregation tools
-- No correlation IDs for request tracing
-
-❌ **No metrics collection**
-- No Prometheus/StatsD integration
-- Can't track: requests/sec, error rates, latency percentiles
-- No dashboards (Grafana, etc.)
-
-❌ **No usage tracking**
-- No per-user/API key tracking
-- Can't bill based on usage
-- Can't detect abuse or unusual patterns
-
-❌ **No rate limiting**
-- Vulnerable to abuse (someone can spam requests)
-- No quotas or throttling
-- Can exhaust server resources
-
-❌ **No request queuing**
-- Concurrent requests compete for resources
-- No backpressure mechanism
-- Server can be overwhelmed
-
-❌ **No distributed tracing**
-- Can't track requests across services
-- No OpenTelemetry/Jaeger integration
-- Hard to debug in multi-service environments
-
-**When our simple approach is insufficient:**
-1. **Production SaaS**: Need billing, quotas, abuse prevention → Add API gateway (Kong, Tyk)
-2. **Multi-tenant**: Need per-user tracking → Add authentication + usage metering
-3. **High reliability**: Need SLAs, monitoring, alerts → Add Prometheus + Grafana + PagerDuty
-4. **Microservices**: Need distributed tracing → Add OpenTelemetry
-5. **Compliance**: Need audit logs → Add structured JSON logging with retention policies
-
-**Production-ready monitoring stack:**
-```bash
-# What you'd need to add:
-- API Gateway: Kong/Tyk (rate limiting, auth, usage tracking)
-- Metrics: Prometheus + Grafana (dashboards, alerts)
-- Logging: Structured JSON → ELK/Loki (search, analysis)
-- Tracing: OpenTelemetry → Jaeger (distributed tracing)
-- Alerting: PagerDuty/Opsgenie (incident response)
-```
 
 ### FastAPI vs Ollama vs vLLM: What We're Giving Up
 
@@ -433,43 +510,52 @@ This section provides honest assessment of our architectural choices, their limi
 - You're serving pure LLMs (vLLM has best support for text models)
 
 **Choose our FastAPI approach if:**
-- Low volume, occasional use (<50 requests/day)
+- Moderate frequency, non-concurrent use (10-50 requests/day)
 - Vision-language OCR tasks (not pure chat)
 - Need full control over model lifecycle
-- Want to minimize idle resource usage
-- Experimenting or prototyping
+- Want cost-effective GPU deployment with scale-to-zero
+- Production-ready but not mission-critical
 
 ### Summary: This Project Is Optimized For...
 
 ✅ **Perfect use cases:**
-- Personal OCR tool (few images per day)
-- Internal company tool (sporadic document processing)
-- Development/testing of GOT-OCR model
-- Cost-sensitive deployments (minimize idle costs)
-- Learning project for VLM deployment
+- **Moderate frequency OCR service** (10-50 requests/day, our target)
+- Internal company document processing (non-concurrent workflow)
+- Production deployment with cost optimization via Cloud Run GPU
+- Privacy-conscious deployments (on-premise capable)
+- Vision-language model experimentation and development
 
 ❌ **Wrong use cases:**
-- High-volume OCR service (>100 images/day) → Use vLLM + GPU
-- Low-latency requirements (<10s response) → Keep model in memory
-- Multi-tenant SaaS → Need API gateway, metering, monitoring
-- Production-critical system → Need proper monitoring, alerting, SLAs
-- Concurrent users → Need request queuing or model pooling
+- **High concurrency** (>10 simultaneous users) → Use vLLM + batching
+- **24/7 high volume** (>200 requests/day) → Persistent GPU instance
+- **Ultra-low latency** (<5s total response) → Keep model in memory
+- **Multi-tenant SaaS** → Need API gateway, metering, rate limiting
+- **Mission-critical systems** → Need advanced monitoring, SLAs, alerting
 
 **If your use case is in the "wrong" category, this architecture will cause pain. Choose the right tool for your actual needs.**
 
 ## Performance Characteristics
 
-**On Apple Silicon M2:**
+**Development (Apple Silicon M2 CPU):**
 - Model loading: ~26 seconds
-- Inference: ~80 seconds per image (CPU)
+- Inference: ~80 seconds per image
 - Total per request: ~106 seconds
 - Memory: ~3GB during inference
+- Device: `DEVICE=cpu` (MPS is 2.7x slower!)
 
-**Recommendations:**
-- **Device**: Use `DEVICE=cpu` (not MPS)
-- **RAM**: 4GB+ for reliable operation
-- **Timeout**: Set HTTP timeout to 300s+ for API
-- **Instances**: Scale horizontally for concurrent requests
+**Production (Cloud Run GPU - NVIDIA L4):**
+- Model loading: ~5-10 seconds
+- Inference: ~15-25 seconds per image
+- Total per request: ~20-35 seconds
+- Memory: ~4GB during inference
+- Device: `DEVICE=cuda`
+
+**Deployment recommendations:**
+- **M2 dev**: Use `DEVICE=cpu` (not MPS - significantly slower)
+- **Cloud Run**: L4 GPU for production, T4 for budget alternative
+- **RAM**: 4GB+ (M2), 8GB+ (Cloud Run with GPU)
+- **Timeout**: Set HTTP timeout to 300s+ for M2, 120s+ for Cloud Run
+- **Concurrency**: Sequential requests only (no batching)
 
 ## Development
 
@@ -527,10 +613,31 @@ MIT License
 
 Future improvements and tasks:
 
+### Core Infrastructure
 - [ ] **Configuration validation**: Ensure all .env settings in config.py are actually used throughout the codebase
 - [ ] **Configuration documentation**: Document complete override hierarchy (CLI args > environment vars > .env defaults)
 - [ ] **Dependency cleanup**: Simplify pydantic-settings and python-multipart usage if possible
+
+### Deployment & Performance
 - [ ] **Docker hardware testing**: Test and document Docker performance across different hardware (M2 CPU, Intel CPU, NVIDIA GPU)
-- [ ] **Documentation cleanup**: Review and consolidate documentation across README, CLAUDE.md, and code comments
-- [ ] **Performance benchmarking**: Create reproducible benchmarks for different hardware configurations
 - [ ] **Cloud deployment guide**: Add detailed GCP Cloud Run deployment instructions with cost estimates
+- [ ] **Performance benchmarking**: Create reproducible benchmarks for different hardware configurations
+- [ ] **Fact-check benchmarks**: Verify model benchmark results (MMLU, IFEval, GSM8K) against latest model cards and leaderboards
+- [ ] **Fact-check costs**: Update and verify Cloud Run GPU pricing, cost estimates, and deployment cost comparisons
+
+### Production Monitoring & Observability
+- [ ] **Structured logging**: Implement JSON logging for better parsing in log aggregation tools (Cloud Logging, ELK)
+- [ ] **Request correlation IDs**: Add tracing IDs to track requests across the system
+- [ ] **Metrics collection**: Integrate Prometheus/StatsD for tracking requests/sec, error rates, latency percentiles
+- [ ] **Monitoring dashboards**: Set up Grafana or Cloud Monitoring dashboards for operational visibility
+- [ ] **Distributed tracing**: Add OpenTelemetry/Jaeger for debugging multi-service interactions
+- [ ] **Alerting system**: Configure alerts for errors, latency spikes, resource exhaustion (PagerDuty/Opsgenie)
+
+### Security & Access Control
+- [ ] **Rate limiting**: Implement API rate limiting to prevent abuse and resource exhaustion
+- [ ] **Authentication**: Add API key authentication for access control
+- [ ] **Usage tracking**: Track per-user/API key usage for billing and abuse detection
+- [ ] **Request queuing**: Implement backpressure mechanism to handle traffic spikes gracefully
+
+### Documentation
+- [ ] **Documentation cleanup**: Review and consolidate documentation across README, CLAUDE.md, and code comments

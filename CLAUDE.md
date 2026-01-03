@@ -4,12 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-inferencekit provides building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf Vision Language Model and Qwen3 text model, optimized for Apple Silicon M2.
+inferencekit provides building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf Vision Language Model and Qwen3 text model.
 
-**Performance characteristics on M2:**
-- Model loading: ~26 seconds
-- Inference: ~80 seconds per image on CPU
-- **Important:** CPU mode is ~2.7x faster than MPS for this model - always use `DEVICE=cpu`
+**Architecture:**
+- Development: M2 CPU (transformers)
+- Production: Cloud Run GPU with NVIDIA L4/T4 (transformers)
+- Use case: Moderately frequent, non-concurrent requests (10-50 requests/day)
+- Stack: transformers + FastAPI + Docker
+
+**Performance characteristics:**
+- **M2 CPU**: ~106s total (~26s load + ~80s inference) - use `DEVICE=cpu` (MPS is 2.7x slower!)
+- **Cloud Run GPU**: ~20-35s total (~5-10s load + ~15-25s inference) - use `DEVICE=cuda`
 
 ## Commands
 
@@ -94,6 +99,24 @@ curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
 
 4. **Single Settings class**: All configuration (model, device, generation params, logging) consolidated in one `Settings` class in `src/inferencekit/schemas/config.py`. No separate GenerationConfig or multiple config files.
 
+### Key Architectural Decisions
+
+**Why transformers (not vLLM/Ollama/llama-cpp):**
+- VLM support required (GOT-OCR vision-language model)
+- Moderate frequency, non-concurrent traffic pattern
+- Cloud Run GPU production target (transformers + CUDA optimal)
+- Full precision (no quantization) for quality
+
+**Why per-request model loading:**
+- Cloud Run scale-to-zero cost savings (~$50-100/month vs $500/month always-on)
+- Non-concurrent traffic doesn't need persistent in-memory model
+- 5-10s GPU load time acceptable for this use case
+
+**Why Cloud Run GPU (not Kubernetes/VM):**
+- Serverless (no ops overhead)
+- Pay-per-use model suits moderate frequency
+- L4/T4 GPU support with automatic scaling
+
 ### Package Structure
 
 ```
@@ -154,7 +177,9 @@ api/                     # FastAPI server (simple structure)
 **FastAPI Server (`api/main.py`):**
 - Simple structure: all endpoints in one file (main.py)
 - Separate schema file for request/response models (schemas.py)
-- **Model lifecycle**: Load per request, unload after completion (~106s total: 26s load + 80s inference)
+- **Model lifecycle**: Load per request, unload after completion
+  - M2 CPU: ~106s total (26s load + 80s inference)
+  - Cloud Run GPU: ~20-35s total (5-10s load + 15-25s inference)
 - Uses same core modules (ImageHandler, GOTOCRModel, OCRResult)
 - Settings loaded from `.env` only (no per-request overrides)
 - No API versioning (direct paths like `/ocr/upload`)
@@ -200,7 +225,9 @@ api/                     # FastAPI server (simple structure)
 ## Important Notes
 
 ### Device Configuration
-Always set `DEVICE=cpu` in `.env` for GOT-OCR-2.0-hf on M2. MPS acceleration is significantly slower than CPU for this specific model.
+- **M2 Development**: Set `DEVICE=cpu` in `.env` - MPS is 2.7x slower than CPU for GOT-OCR-2.0-hf
+- **Cloud Run Production**: Set `DEVICE=cuda` for GPU acceleration (L4/T4)
+- Never use MPS for this model - architecture-specific performance issue
 
 ### Script Development Guidelines
 When creating new scripts in `scripts/`:
@@ -224,7 +251,7 @@ When creating new scripts in `scripts/`:
 ### API Development Guidelines
 When working with the FastAPI server in `api/`:
 - Keep it simple: all endpoints in `main.py`, schemas in `schemas.py`
-- Model loads per request (not at startup) - this is intentional for occasional use pattern
+- **Model loads per request** (not at startup) - intentional for moderately frequent, non-concurrent use with Cloud Run scale-to-zero
 - Use `tempfile.NamedTemporaryFile` for upload handling
 - Clean up temp files in finally block
 - Map exceptions to HTTP status codes:
@@ -237,7 +264,7 @@ When working with the FastAPI server in `api/`:
 - FastAPI auto-generates docs at `/docs` and `/redoc`
 
 ### Docker Development Guidelines
-When working with Docker containerization:
+When working with Docker containerization (target: **GCP Cloud Run with GPU**):
 - **Multi-stage builds**: Use builder stage for dependency installation, slim runtime for production
 - **Python version consistency**: Match python version in both Dockerfile stages with pyproject.toml (3.12)
 - **UV dependency groups**: Separate dependencies into groups in pyproject.toml:
@@ -250,15 +277,21 @@ When working with Docker containerization:
 - **Layer caching**: Install dependencies before copying source code
 - **Minimal runtime**: Use `python:3.12-slim-bookworm` for small image size
 - **Port 8080**: Standard for Cloud Run compatibility
-- **Environment variables**: Support runtime overrides via `-e` flags
+- **Environment variables**: Support runtime overrides via `-e` flags (especially `DEVICE=cuda` for GPU)
 - **.dockerignore**: Exclude notebooks, tests, dev files, .env, .git from build context
+- **GPU support**: Ensure CUDA-compatible torch installation for Cloud Run GPU deployment
 
 ## Project Components
 
-The project is complete and includes:
+The project is production-ready and includes:
 
 - **Core modules** (`src/inferencekit/`): Reusable components for running inference on various models (OCR, text generation)
-- **CLI interface** (`scripts/stepfun_got_ocr.py`): Command-line tool for local OCR processing
-- **REST API** (`api/`): FastAPI server with file upload and URL-based OCR endpoints
-- **Docker support** (`Dockerfile`): Multi-stage containerization for cloud deployment
+- **CLI interface** (`scripts/`): Command-line tools for local development and testing
+- **REST API** (`api/`): FastAPI server with file upload and URL-based endpoints
+- **Docker support** (`Dockerfile`): Multi-stage containerization optimized for GCP Cloud Run GPU deployment
 - **Experimentation** (`notebooks/`): Jupyter notebooks for model testing and validation (GOT-OCR, Qwen3)
+
+**Deployment flow:**
+- Development: M2 local → `DEVICE=cpu` → transformers CPU inference
+- Production: Cloud Run GPU (L4/T4) → `DEVICE=cuda` → transformers CUDA inference
+- Same codebase, different device configuration via environment variables

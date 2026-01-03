@@ -1,4 +1,4 @@
-"""FastAPI server for OCR using GOT-OCR-2.0-hf model."""
+"""FastAPI server for model inference (OCR and text generation)."""
 
 import logging
 import tempfile
@@ -8,9 +8,9 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from inferencekit import GOTOCRModel, ImageHandler, OCRResult, get_settings
+from inferencekit import GOTOCRModel, ImageHandler, OCRResult, Qwen3Model, TextResult, get_settings
 
-from .schemas import OCRResponse, OCRUrlRequest
+from .schemas import OCRResponse, OCRUrlRequest, TextGenerateRequest, TextResponse
 
 # Initialize settings and logging
 settings = get_settings()
@@ -23,9 +23,9 @@ logging.basicConfig(
 
 # Create FastAPI app
 app = FastAPI(
-    title="OCR VLM API",
-    description="OCR using GOT-OCR-2.0-hf Vision Language Model",
-    version="0.1.0",
+    title="InferenceKit API",
+    description="Model inference API for OCR and text generation",
+    version="0.2.0",
 )
 
 # CORS middleware
@@ -41,7 +41,15 @@ app.add_middleware(
 @app.get("/")
 async def root():
     """Root endpoint redirecting to API info."""
-    return {"message": "OCR VLM API", "docs": "/docs", "info": "/ocr"}
+    return {
+        "message": "InferenceKit API",
+        "docs": "/docs",
+        "endpoints": {
+            "ocr": "/ocr",
+            "text_generation": "/text",
+            "health": "/health",
+        },
+    }
 
 
 @app.get("/ocr")
@@ -84,9 +92,10 @@ async def health_check():
     """
     return {
         "status": "healthy",
-        "model_id": settings.model_id,
+        "ocr_model": settings.model_id,
+        "text_model": settings.qwen_model_id,
         "device": settings.device,
-        "service": "OCR VLM API",
+        "service": "InferenceKit API",
     }
 
 
@@ -238,3 +247,84 @@ async def ocr_url(request: OCRUrlRequest):
         if "RequestException" in str(type(e)):
             raise HTTPException(status_code=422, detail=f"Failed to download image: {str(e)}")
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+
+
+@app.get("/text")
+async def get_text_info():
+    """Get information about text generation API capabilities.
+
+    Returns information about model, device, and usage examples.
+    """
+    return {
+        "service": "Text Generation API",
+        "model": settings.qwen_model_id,
+        "device": settings.device,
+        "endpoints": {
+            "generate": "POST /text/generate - Generate text from prompt",
+            "health": "GET /health - Health check",
+        },
+        "example_usage": {
+            "generate": (
+                'curl -X POST -H "Content-Type: application/json" '
+                '-d \'{"prompt":"Hello, how are you?"}\' http://localhost:8080/text/generate'
+            ),
+        },
+    }
+
+
+@app.post("/text/generate", response_model=TextResponse)
+async def text_generate(request: TextGenerateRequest):
+    """Generate text from a prompt using Qwen3 model.
+
+    Args:
+        request: TextGenerateRequest containing the prompt
+
+    Returns:
+        TextResponse with generated text and metadata
+
+    Raises:
+        HTTPException: 400 for invalid prompts, 500 for processing errors
+    """
+    logger.info(f"Text generation request: {request.prompt[:100]}...")
+
+    try:
+        # Initialize and load model
+        logger.info("Loading model...")
+        model = Qwen3Model(settings)
+        load_start = time.time()
+        model.load()
+        load_time = time.time() - load_start
+        logger.info(f"Model loaded in {load_time:.2f} seconds")
+
+        # Run inference
+        logger.info("Running text generation...")
+        inference_start = time.time()
+        text = model.generate(request.prompt, settings)
+        inference_time = time.time() - inference_start
+        logger.info(
+            f"Generation completed in {inference_time:.2f} seconds"
+            f", generated {len(text)} characters"
+        )
+
+        # Cleanup model
+        model.unload()
+        logger.debug("Model unloaded")
+
+        # Create result
+        result = TextResult(
+            text=text,
+            model_id=settings.qwen_model_id,
+            inference_time_seconds=inference_time,
+            device=settings.device,
+        )
+
+        # Convert to response schema
+        response_dict = result.to_dict()
+        return TextResponse(**response_dict)
+
+    except ValueError as e:
+        logger.error(f"Invalid prompt: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Text generation failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Text generation failed: {str(e)}")

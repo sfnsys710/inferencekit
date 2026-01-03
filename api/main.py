@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from ocrvlm import GOTOCRModel, ImageHandler, OCRResult, get_settings
+from inferencekit import GOTOCRModel, ImageHandler, OCRResult, get_settings
 
 from .schemas import OCRResponse, OCRUrlRequest
 

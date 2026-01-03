@@ -1,8 +1,8 @@
 """
-ocrvlm - OCR using Vision Language Models
+inferencekit - Model inference toolkit
 
-Main public API for the ocrvlm library.
-Provides building blocks for OCR with GOT-OCR-2.0-hf model.
+Main public API for the inferencekit library.
+Provides building blocks for running inference on various models (OCR, text generation, etc.).
 """
 
 from .content.image import ImageHandler

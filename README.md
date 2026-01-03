@@ -25,6 +25,7 @@ cp .env.example .env
 
 ### CLI Usage
 
+**OCR (GOT-OCR-2.0-hf):**
 ```bash
 # Process local image
 python scripts/stepfun_got_ocr.py --path image.jpg
@@ -34,9 +35,18 @@ python scripts/stepfun_got_ocr.py --url https://example.com/image.jpg
 
 # Save output to file
 python scripts/stepfun_got_ocr.py --path image.jpg --output result.txt
+```
 
-# Override device setting
-python scripts/stepfun_got_ocr.py --path image.jpg --device cpu
+**Text Generation (Qwen3):**
+```bash
+# Generate text
+python scripts/qwen3_generate.py --prompt "Hello, how are you?"
+
+# Save output to file
+python scripts/qwen3_generate.py --prompt "Explain AI" --output result.txt
+
+# Override device and max tokens
+python scripts/qwen3_generate.py --prompt "Write a poem" --device cpu --max_tokens 512
 ```
 
 ### API Usage
@@ -45,13 +55,18 @@ python scripts/stepfun_got_ocr.py --path image.jpg --device cpu
 # Start server
 uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
 
-# Upload image
+# OCR: Upload image
 curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
 
-# Process from URL
+# OCR: Process from URL
 curl -X POST -H "Content-Type: application/json" \
   -d '{"url":"https://example.com/image.jpg"}' \
   http://localhost:8080/ocr/url
+
+# Text generation
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"prompt":"Hello, how are you?"}' \
+  http://localhost:8080/text/generate
 
 # Health check
 curl http://localhost:8080/health
@@ -138,7 +153,8 @@ All configuration is centralized in `src/inferencekit/schemas/config.py` using p
 **Environment variables (.env):**
 ```bash
 # Model settings
-MODEL_ID=stepfun-ai/GOT-OCR2_0
+MODEL_ID=stepfun-ai/GOT-OCR2_0        # OCR model
+QWEN_MODEL_ID=Qwen/Qwen2.5-0.5B-Instruct  # Text generation model
 DEVICE=cpu
 MAX_NEW_TOKENS=4096
 

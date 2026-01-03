@@ -6,12 +6,13 @@ Provides building blocks for running inference on various models (OCR, text gene
 """
 
 from .content.image import ImageHandler
-from .models.base import BaseOCRModel
+from .models.base import BaseModel
 from .models.got_ocr import GOTOCRModel
+from .models.qwen3 import Qwen3Model
 from .schemas.config import Settings, get_settings
-from .schemas.output import OCRResult
+from .schemas.output import OCRResult, TextResult
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     # Configuration
@@ -20,8 +21,10 @@ __all__ = [
     # Core components
     "ImageHandler",
     # Models
-    "BaseOCRModel",
+    "BaseModel",
     "GOTOCRModel",
+    "Qwen3Model",
     # Schemas
     "OCRResult",
+    "TextResult",
 ]

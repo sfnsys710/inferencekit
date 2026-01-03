@@ -8,12 +8,12 @@ from PIL import Image
 from transformers import AutoModelForImageTextToText, AutoProcessor
 
 from ..schemas.config import Settings
-from .base import BaseOCRModel
+from .base import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
-class GOTOCRModel(BaseOCRModel):
+class GOTOCRModel(BaseModel):
     """Implementation for GOT-OCR-2.0-hf model from HuggingFace.
 
     This model uses Vision-Language capabilities for OCR tasks.

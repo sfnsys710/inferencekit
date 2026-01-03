@@ -1,4 +1,4 @@
-"""Output schemas for OCR results."""
+"""Output schemas for inference results."""
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -28,6 +28,44 @@ class OCRResult:
     @property
     def success(self) -> bool:
         """Check if the OCR operation was successful."""
+        return self.error is None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary for JSON/API responses."""
+        return {
+            "text": self.text,
+            "model_id": self.model_id,
+            "inference_time_seconds": self.inference_time_seconds,
+            "timestamp": self.timestamp.isoformat(),
+            "device": self.device,
+            "error": self.error,
+            "success": self.success,
+        }
+
+
+@dataclass
+class TextResult:
+    """Text generation result with metadata.
+
+    Attributes:
+        text: Generated text
+        model_id: Model identifier used for generation
+        inference_time_seconds: Time taken for inference
+        timestamp: When the generation was performed
+        device: Device used for inference (cpu, mps, cuda)
+        error: Error message if operation failed, None otherwise
+    """
+
+    text: str
+    model_id: str
+    inference_time_seconds: float
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    device: str = "cpu"
+    error: str | None = None
+
+    @property
+    def success(self) -> bool:
+        """Check if the generation was successful."""
         return self.error is None
 
     def to_dict(self) -> dict[str, Any]:

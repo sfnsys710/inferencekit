@@ -22,7 +22,10 @@ class Settings(BaseSettings):
 
     # Model Configuration
     model_id: str = Field(
-        default="stepfun-ai/GOT-OCR-2.0-hf", description="HuggingFace model identifier"
+        default="stepfun-ai/GOT-OCR-2.0-hf", description="HuggingFace model identifier for OCR"
+    )
+    qwen_model_id: str = Field(
+        default="Qwen/Qwen2.5-0.5B-Instruct", description="HuggingFace model identifier for Qwen3"
     )
     model_cache_dir: Path | None = Field(
         default=None, description="Optional directory for caching downloaded models"

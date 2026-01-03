@@ -1,21 +1,20 @@
-"""Abstract base class for OCR models."""
+"""Abstract base class for inference models."""
 
 from abc import ABC, abstractmethod
-
-from PIL import Image
+from typing import Any
 
 from ..schemas.config import Settings
 
 
-class BaseOCRModel(ABC):
-    """Abstract base class for OCR models.
+class BaseModel(ABC):
+    """Abstract base class for inference models.
 
-    Defines the interface that all OCR model implementations must follow.
+    Defines the interface that all model implementations must follow.
     """
 
     @abstractmethod
     def load(self) -> None:
-        """Load model and processor into memory.
+        """Load model and processor/tokenizer into memory.
 
         Raises:
             Exception: If model loading fails
@@ -37,15 +36,15 @@ class BaseOCRModel(ABC):
         pass
 
     @abstractmethod
-    def generate(self, image: Image.Image, settings: Settings) -> str:
-        """Run OCR inference on an image.
+    def generate(self, input_data: Any, settings: Settings) -> str:
+        """Run inference.
 
         Args:
-            image: PIL Image to perform OCR on
+            input_data: Input for the model (image, text, etc.)
             settings: Application settings including generation parameters
 
         Returns:
-            Extracted text from the image
+            Generated output text
 
         Raises:
             Exception: If model is not loaded or inference fails

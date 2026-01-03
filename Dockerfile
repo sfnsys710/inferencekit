@@ -1,3 +1,6 @@
+# Multi-stage Dockerfile for InferenceKit API
+# Supports OCR (GOT-OCR-2.0-hf) and text generation (Qwen3) models
+
 # Build stage: it is important to use same python version as in pyproject.toml, as we deactivate python download
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 

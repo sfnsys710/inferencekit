@@ -22,18 +22,20 @@ uv sync
 cp .env.example .env
 ```
 
-### Running OCR
+### Running Models
 
-**CLI:**
+**OCR (GOT-OCR):**
 ```bash
 python scripts/stepfun_got_ocr.py --path image.jpg
 python scripts/stepfun_got_ocr.py --url https://example.com/image.jpg
 python scripts/stepfun_got_ocr.py --path image.jpg --device cpu --output result.txt
+```
 
-# Optional parameters
-# --device: cpu/mps/cuda (overrides .env setting)
-# --output: file path to save result
-# --max_tokens: override max_new_tokens setting
+**Text Generation (Qwen3):**
+```bash
+python scripts/qwen3_generate.py --prompt "Hello, how are you?"
+python scripts/qwen3_generate.py --prompt "Explain AI" --output result.txt
+python scripts/qwen3_generate.py --prompt "Write code" --device cpu --max_tokens 512
 ```
 
 **API Server:**
@@ -43,10 +45,13 @@ uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
 
 # Test endpoints
 curl http://localhost:8080/health
-curl http://localhost:8080/ocr  # API info
+curl http://localhost:8080/ocr   # OCR API info
+curl http://localhost:8080/text  # Text generation API info
 curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
 curl -X POST -H "Content-Type: application/json" \
   -d '{"url":"https://example.com/image.jpg"}' http://localhost:8080/ocr/url
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"prompt":"Hello"}' http://localhost:8080/text/generate
 
 # View auto-generated docs
 # Swagger UI: http://localhost:8080/docs
@@ -97,14 +102,16 @@ src/inferencekit/        # Core reusable modules
 ├── content/
 │   └── image.py         # ImageHandler with load_from_url() and load_from_path()
 ├── models/
-│   ├── base.py          # BaseOCRModel abstract interface
-│   └── got_ocr.py       # GOTOCRModel implementation
+│   ├── base.py          # BaseModel abstract interface
+│   ├── got_ocr.py       # GOTOCRModel implementation (vision → text)
+│   └── qwen3.py         # Qwen3Model implementation (text → text)
 └── schemas/
     ├── config.py        # Settings class (all configuration including API)
-    └── output.py        # OCRResult dataclass
+    └── output.py        # OCRResult and TextResult dataclasses
 
 scripts/                 # CLI entry points (standalone, no __init__.py)
-└── stepfun_got_ocr.py  # Function-based CLI using Fire
+├── stepfun_got_ocr.py  # OCR CLI using Fire
+└── qwen3_generate.py   # Text generation CLI using Fire
 
 api/                     # FastAPI server (simple structure)
 ├── main.py             # FastAPI app with all endpoints
@@ -126,21 +133,23 @@ api/                     # FastAPI server (simple structure)
 - Returns PIL Image objects
 - Raises ValueError or FileNotFoundError on errors
 
-**BaseOCRModel (`models/base.py`):**
+**BaseModel (`models/base.py`):**
 - Abstract interface defining `load()`, `unload()`, `is_loaded()`, `generate()`
-- `generate()` accepts `Image.Image` and `Settings` (not separate config objects)
+- Generic for all model types (vision, text, etc.)
 
 **GOTOCRModel (`models/got_ocr.py`):**
-- Concrete implementation using HuggingFace transformers
+- Vision-to-text OCR implementation
 - Uses `AutoProcessor` and `AutoModelForImageTextToText`
-- Lazy loading pattern - model loads on first `load()` call
-- Uses `torch.no_grad()` for inference efficiency
-- Warns if MPS is used (CPU is faster for this model)
+- CPU is ~2.7x faster than MPS on M2
 
-**OCRResult (`schemas/output.py`):**
-- Dataclass for inference results
-- Includes text, model_id, inference_time, timestamp, device
-- Has `to_dict()` method for JSON serialization (used by API)
+**Qwen3Model (`models/qwen3.py`):**
+- Text-to-text generation implementation
+- Uses `AutoTokenizer` and `AutoModelForCausalLM`
+- Same lazy loading pattern as GOTOCRModel
+
+**OCRResult & TextResult (`schemas/output.py`):**
+- Dataclasses for inference results with metadata
+- Both have `to_dict()` method for JSON serialization
 
 **FastAPI Server (`api/main.py`):**
 - Simple structure: all endpoints in one file (main.py)
@@ -152,37 +161,41 @@ api/                     # FastAPI server (simple structure)
 
 **API Endpoints:**
 - `GET /` - Root endpoint
-- `GET /ocr` - API info and capabilities
 - `GET /health` - Health check for monitoring
-- `POST /ocr/upload` - File upload OCR (mirrors CLI `--path`)
-- `POST /ocr/url` - URL-based OCR (mirrors CLI `--url`)
+- `GET /ocr` - OCR API info
+- `POST /ocr/upload` - File upload OCR
+- `POST /ocr/url` - URL-based OCR
+- `GET /text` - Text generation API info
+- `POST /text/generate` - Text generation
 
 **API Schemas (`api/schemas.py`):**
-- `OCRUrlRequest` - Request model for URL endpoint (pydantic HttpUrl validation)
-- `OCRResponse` - Unified response model (mirrors OCRResult.to_dict())
+- `OCRUrlRequest`, `OCRResponse` - OCR request/response models
+- `TextGenerateRequest`, `TextResponse` - Text generation request/response models
 
 ### Data Flow
 
-**CLI Flow (scripts/stepfun_got_ocr.py):**
+**OCR CLI Flow (scripts/stepfun_got_ocr.py):**
 1. Validate explicit `--path` or `--url` parameter (mutually exclusive, one required)
 2. ImageHandler loads and validates image via appropriate method
-3. GOTOCRModel loads model (if not already loaded)
-4. Model runs inference with Settings parameters (max_new_tokens, do_sample, stop_strings)
+3. GOTOCRModel loads model
+4. Model runs inference with Settings parameters
 5. Returns extracted text as string
 6. Optional: Save to output file if `--output` specified
 7. Model cleanup via `unload()`
 
-**API Flow (api/main.py):**
-1. HTTP request received (file upload or URL)
-2. For uploads: Save to tempfile, use `load_from_path()`; For URLs: Use `load_from_url()`
-3. ImageHandler validates format and size
-4. GOTOCRModel instance created and loaded (~26s)
-5. Model runs inference (~80s on CPU)
-6. Model unloaded to free memory
-7. OCRResult created and converted to JSON response via `to_dict()`
-8. Temp file cleanup (upload endpoint only)
+**Text Generation CLI Flow (scripts/qwen3_generate.py):**
+1. Validate `--prompt` parameter (required)
+2. Qwen3Model loads model
+3. Model runs text generation with Settings parameters
+4. Returns generated text as string
+5. Optional: Save to output file if `--output` specified
+6. Model cleanup via `unload()`
 
-**Key difference**: CLI can override settings via parameters; API uses `.env` settings only
+**API Flow:**
+- **OCR**: Image upload/URL → ImageHandler → GOTOCRModel → OCRResult → JSON
+- **Text**: Prompt → Qwen3Model → TextResult → JSON
+- Same pattern: per-request load/unload, timing logs, error handling
+- CLI can override settings via parameters; API uses `.env` settings only
 
 ## Important Notes
 

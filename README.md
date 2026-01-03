@@ -1,14 +1,14 @@
-# OCR VLM
+# InferenceKit
 
-OCR experimentation project using GOT-OCR-2.0-hf model from HuggingFace, optimized for Apple Silicon M2.
+Building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf vision language model and Qwen3 text model.
 
 ## Features
 
-- Vision Language Model-based OCR using GOT-OCR-2.0-hf
-- Optimized for Apple Silicon M2 (CPU mode)
+- Multi-model support: Vision Language Models (GOT-OCR) and text models (Qwen3)
+- Optimized for Apple Silicon M2 (CPU mode for OCR)
 - Dual interfaces: CLI and REST API
 - Containerized deployment ready for GCP Cloud Run
-- Designed for low-volume, occasional use (~106s per request including model load)
+- Designed for low-volume, occasional use (~106s per OCR request including model load)
 
 ## Quick Start
 
@@ -17,8 +17,8 @@ OCR experimentation project using GOT-OCR-2.0-hf model from HuggingFace, optimiz
 ```bash
 # Install uv if you haven't already
 # Clone and setup
-git clone <repo-url>
-cd ocrvlm
+git clone https://github.com/sfnsys710/inferencekit.git
+cd inferencekit
 uv sync --group api  # Include API dependencies
 cp .env.example .env
 ```
@@ -63,13 +63,13 @@ curl http://localhost:8080/health
 
 ```bash
 # Build image
-docker build -t ocrvlm:latest .
+docker build -t inferencekit:latest .
 
 # Run container
-docker run -p 8080:8080 ocrvlm:latest
+docker run -p 8080:8080 inferencekit:latest
 
 # Run with environment overrides
-docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrvlm:latest
+docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
 ```
 
 ## Architecture
@@ -85,10 +85,10 @@ docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrvlm:latest
 ### Project Structure
 
 ```
-ocrvlm/
-├── src/ocrvlm/        # Core reusable Python modules
+inferencekit/
+├── src/inferencekit/  # Core reusable Python modules
 │   ├── content/       # Image loading and validation
-│   ├── models/        # OCR model implementations
+│   ├── models/        # Model implementations (OCR, text generation)
 │   └── schemas/       # Configuration and output schemas
 ├── scripts/           # CLI entry points
 ├── api/              # FastAPI server
@@ -133,7 +133,7 @@ DEVICE=cpu  # Use CPU (fastest on M2)
 
 ### Configuration Management
 
-All configuration is centralized in `src/ocrvlm/schemas/config.py` using pydantic-settings.
+All configuration is centralized in `src/inferencekit/schemas/config.py` using pydantic-settings.
 
 **Environment variables (.env):**
 ```bash
@@ -160,7 +160,7 @@ LOG_LEVEL=INFO
 
 3. Docker: Environment variables passed to container override defaults
    ```bash
-   docker run -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrvlm:latest
+   docker run -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
    ```
 
 ### API Monitoring
@@ -186,7 +186,7 @@ Every OCR response includes:
 **Example monitoring in production:**
 ```bash
 # Cloud Run health check
-gcloud run services update ocrvlm \
+gcloud run services update inferencekit \
   --region us-central1 \
   --max-instances 10 \
   --cpu 2 \

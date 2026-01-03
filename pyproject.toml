@@ -1,6 +1,6 @@
 [project]
 name = "inferencekit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Building blocks for running inference on various models (OCR, text generation, etc.)"
 readme = "README.md"
 authors = [

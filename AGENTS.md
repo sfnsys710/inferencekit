@@ -2,29 +2,27 @@
 
 Guidance for agentic coding agents working with the ocrkit codebase.
 
+ocrkit is an OCR toolkit covering traditional, LLM-based, and hybrid approaches applied to the Moroccan context (Arabic, French, Darija). Notebooks hold POC experiments; `src/ocrkit/` holds deployable code.
+
 ## Build/Lint/Test Commands
 
 ```bash
-# Environment setup
+# Setup
 uv sync
-uv sync --group dev --group api --group pre-commit --group experiment
+uv sync --group dev --group api --group experiment
 
-# Code quality
-ruff check --fix --unsafe-fixes
-ruff format
-ruff check --fix --unsafe-fixes --exit-non-zero-on-fix && ruff format
+# Linting / formatting
+ruff check --fix --unsafe-fixes && ruff format
 
-# Pre-commit hooks
+# Pre-commit
 pre-commit install
 pre-commit run --all-files
 
-# Testing (when pytest is added)
-pytest                           # All tests
-pytest tests/test_specific.py    # Single file
-pytest tests/test_specific.py::test_function_name  # Single function
-pytest --cov=ocrkit        # With coverage
+# Tests (when added)
+pytest
+pytest --cov=ocrkit
 
-# Running the application
+# Run
 python scripts/stepfun_got_ocr.py --path image.jpg
 python scripts/qwen3_generate.py --prompt "Hello"
 uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
@@ -34,101 +32,64 @@ docker build -t ocrkit:latest .
 docker run -p 8080:8080 ocrkit:latest
 ```
 
-## Code Style Guidelines
+## Code Style
 
-### General Principles
-- **Explicit over implicit**: Use explicit parameters (`--path`/`--url`) rather than generic ones
-- **Logging only**: No print statements - use Python's logging module exclusively
-- **Raise errors, don't exit**: Prefer `raise ValueError()` over `sys.exit(1)`
-- **Single settings class**: All configuration in `schemas/config.py` using pydantic-settings
+- **Explicit params**: `--path` / `--url`, not `--source`
+- **Logging only**: `import logging`, `logger = logging.getLogger(__name__)`, `setup_logging()` in scripts — no `print()`
+- **Raise, don't exit**: `raise ValueError()` not `sys.exit(1)`
+- **Single Settings**: all config in `src/ocrkit/schemas/config.py`
+- **Type hints**: `str | None` not `Optional[str]`, return types on all functions
+- **Imports**: isort order (stdlib → third-party → local); relative imports inside package
+- **Naming**: PascalCase classes, snake_case functions/vars, UPPER_SNAKE constants, `_prefix` private
 
-### Import Style
-- Use `isort` rules (handled by ruff)
-- Group imports: standard library, third-party, local imports
-- Use relative imports for local modules: `from .schemas.config import Settings`
-- Import specific names, not modules: `from pathlib import Path` not `import pathlib`
+## Architecture
 
-### Type Hints
-- Use modern type hints: `str | None` instead of `Optional[str]`
-- Use `Literal` for string enums: `Literal["cpu", "mps", "cuda"]`
-- Add return types to all functions
-- Use `Any` sparingly, prefer specific types
+```
+src/ocrkit/         # Deployable package (imported by api/, scripts/)
+notebooks/          # POC experiments — not imported by src/
+api/                # FastAPI (main.py + schemas.py)
+scripts/            # CLI entry points (Fire, standalone)
+```
 
-### Naming Conventions
-- **Classes**: PascalCase (e.g., `ImageHandler`, `GOTOCRModel`)
-- **Functions/variables**: snake_case (e.g., `load_from_url`, `max_new_tokens`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_IMAGE_SIZE_MB`)
-- **Private methods**: prefix with underscore (e.g., `_validate_image`)
+### OCR Approaches in this repo
 
-### Error Handling
-- Use specific exception types: `ValueError`, `FileNotFoundError`, `HTTPException`
-- Include descriptive error messages
-- Let exceptions propagate to calling code
-- In API, map exceptions to HTTP status codes:
-  - `ValueError` → 400 Bad Request
-  - `FileNotFoundError` → 404 Not Found
-  - Other errors → 500 Internal Server Error
+| Approach | Tools | Location |
+|----------|-------|----------|
+| Traditional | Tesseract (tesserocr), doctr | notebooks/, experiment group |
+| LLM-based | GOT-OCR-2.0-hf, Qwen3 | src/ocrkit/models/ |
+| Hybrid | layout + VLM | notebooks/ |
 
-### Documentation
-- Use triple quotes for all module, class, and function docstrings
-- Follow Google-style docstring format
-- Include Args, Returns, Raises sections where applicable
-- Add usage examples in CLI scripts
+### Inference runtimes (studied in notebooks)
 
-### Code Structure
-- **Core modules** (`src/ocrkit/`): Reusable components with clear interfaces
-- **CLI scripts** (`scripts/`): Standalone, function-based with Fire library
-- **API server** (`api/`): Simple FastAPI with all endpoints in `main.py`
-- **Configuration**: Single `Settings` class in `schemas/config.py`
+| Runtime | VLM | Dev (M2) | GPU | Notes |
+|---------|-----|----------|-----|-------|
+| transformers (current) | ✓✓ | CPU | CUDA | Required for GOT-OCR |
+| vLLM | ⚠ | ✗ | ✓✓ | High concurrency only |
+| Ollama | ✗ | ✓ Metal | ✓ | Chat LLMs |
+| llama-cpp | ✓ | ✓✓ Metal | ⚠ | GGUF, quantized |
 
-### Logging
-- Import logging: `import logging`
-- Get module logger: `logger = logging.getLogger(__name__)`
-- Configure via `setup_logging()` in scripts, `basicConfig()` in modules
-- Use appropriate log levels: DEBUG, INFO, WARNING, ERROR
+### Model lifecycle
 
-### File Organization
-- Keep files focused on single responsibility
-- Use `__init__.py` to control public API exports
-- Scripts are standalone (no `__init__.py` in `scripts/`)
-- Separate schemas from implementation
+Per-request load/unload (intentional — Cloud Run scale-to-zero):
+- `model.load()` → inference → `model.unload()`
+- Never keep model in memory between requests
 
-### Device & Deployment
-- **M2 Development**: Use `DEVICE=cpu` (MPS is 2.7x slower for GOT-OCR)
-- **Cloud Run Production**: Use `DEVICE=cuda` for GPU acceleration
-- Never use MPS for GOT-OCR-2.0-hf model
-- Model loads per request (not at startup) for Cloud Run scale-to-zero
-- Use `tempfile.NamedTemporaryFile` for uploads; cleanup in finally blocks
-- No per-request setting overrides (use .env settings only)
+### Error handling (API)
 
-### Docker
-- Multi-stage builds with builder and runtime stages
-- Use `python:3.12-slim-bookworm` for minimal runtime
-- Set `UV_PYTHON_DOWNLOADS=0` and `UV_COMPILE_BYTECODE=1`
-- Support runtime environment overrides (`-e DEVICE=cuda`)
+- `ValueError` → 400
+- `FileNotFoundError` → 404
+- URL download failure → 422
+- Other → 500
 
-## Architecture Notes
+### Device
 
-### Model Lifecycle
-- Lazy loading: Models load only when needed
-- Per-request loading: Intentional for Cloud Run cost optimization
-- Explicit cleanup: Always call `unload()` after inference
-
-### Settings Management
-- Environment-based configuration via `.env` file
-- Cached singleton using `@lru_cache`
-- CLI can override settings via parameters
-- API uses environment settings only
-
-### Image Processing
-- Validate format and size after loading
-- Support explicit `load_from_path()` and `load_from_url()` methods
-- Raise appropriate exceptions for validation failures
+- M2 dev: `DEVICE=cpu` (MPS is 2.7x slower for GOT-OCR — never use MPS)
+- Production: `DEVICE=cuda`
 
 ## Development Workflow
 
-1. Make changes following code style guidelines
-2. Run `ruff check --fix --unsafe-fixes && ruff format`
-3. Test CLI scripts and API endpoints
-4. Run `pre-commit run --all-files` before committing
-5. Use `uv sync` to update dependencies as needed
+1. Edit code following style above
+2. `ruff check --fix --unsafe-fixes && ruff format`
+3. Test CLI / API endpoints manually
+4. `pre-commit run --all-files` before committing
+5. Add notebook POCs in `notebooks/` for new approaches

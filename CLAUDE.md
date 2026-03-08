@@ -26,6 +26,7 @@ ocrkit is an OCR research and deployment toolkit covering traditional, LLM-based
 ```bash
 uv sync
 uv sync --group api          # + FastAPI
+uv sync --group evals        # + RAGAS, Anthropic, Dash
 uv sync --group experiment   # + docling, doctr, tesserocr
 cp .env.example .env
 ```
@@ -68,6 +69,19 @@ uv sync --group dev
 jupyter notebook notebooks/
 ```
 
+### Evals
+```bash
+cd evals
+uv run --group evals python run.py --model claude-haiku-4-5-20251001 --doc cin --prompt_version v1
+uv run --group evals python run.py --model claude-sonnet-4-6 --doc cin --prompt_version v2
+```
+
+### Dashboard
+```bash
+uv run --group evals python dashboard/app.py
+# → http://127.0.0.1:8050
+```
+
 ## Architecture
 
 ### Core Design Principles
@@ -105,6 +119,22 @@ notebooks/               # POC experiments (not imported by src/)
 ├── doctr.ipynb
 ├── docling.ipynb
 └── qwen3-06b.ipynb
+
+evals/                   # Evaluation pipeline
+├── run.py               # Experiment runner (RAGAS + Anthropic)
+├── utils.py             # Dataset + prompt loading, image/PDF → API block
+├── datasets/cin/        # CIN document type
+│   ├── cin.csv          # Dataset index (id, in, out, tags, notes)
+│   ├── ins/             # Input images (cin1.png, cin2.jpg, cin3.jpeg)
+│   ├── outs/            # Ground truth JSON files
+│   └── prompts/         # v1.yaml, v2.yaml — RECTO-only extraction prompts
+└── experiments/         # Output CSVs, one per run
+
+dashboard/               # Results visualization (run from project root)
+├── app.py               # Dash app + all callbacks
+├── components.py        # Charts + filter panel
+├── llm.py               # Reason summarizer via LLM
+└── utils.py             # load_experiments(), DISPLAY_COLS, DETAIL_COLS
 ```
 
 ### Inference Options (studied in notebooks)
@@ -172,3 +202,16 @@ Cost: ~$50-100/month (scale-to-zero) vs ~$500/month (always-on GPU).
 - `UV_PYTHON_DOWNLOADS=0`, `UV_COMPILE_BYTECODE=1`
 - Install deps before copying source (layer cache)
 - Port 8080 (Cloud Run standard)
+
+### Evals Guidelines (`evals/`)
+- Run from `evals/` directory: `cd evals && uv run --group evals python run.py ...`
+- `run.py` uses plain `from utils import` (not relative) — it's a script, not a package
+- Judge LLM is set via `JUDGE_LLM` in `.env` — must be a Claude model
+- ragas `InstructorModelArgs` hardcodes `top_p=0.1`; Claude 4.x rejects temperature+top_p together — fix: `judge_llm.model_args.pop("top_p", None)` after `llm_factory()` call
+- Metrics: `correct_fields` (NumericMetric, 0–8) and `format_compliance` (DiscreteMetric, correct/incorrect)
+- Experiment CSVs land in `evals/experiments/`, named `<doc>_prompt_<version>_<model>_<timestamp>.csv`
+
+### Dashboard Guidelines (`dashboard/`)
+- Run from project root: `uv run --group evals python dashboard/app.py`
+- Reads from `evals/experiments/*.csv` — `EXPERIMENTS_DIR` is set relative to `dashboard/utils.py`
+- `prompt_version` is parsed from the CSV filename, not stored as a column in the CSV itself

@@ -10,6 +10,8 @@ OCR research toolkit — traditional, LLM-based, and hybrid approaches, applied 
 | `src/ocrkit/` | Packaged, deployable inference code |
 | `api/` | FastAPI REST API |
 | `scripts/` | CLI entry points |
+| `evals/` | Evaluation pipeline (RAGAS + Anthropic judge LLM) |
+| `dashboard/` | Dash app for visualizing eval results |
 | `Dockerfile` | Multi-stage build for GCP Cloud Run GPU |
 
 ## OCR Approaches
@@ -23,8 +25,7 @@ OCR research toolkit — traditional, LLM-based, and hybrid approaches, applied 
 - **Qwen3** — LLM for post-processing, correction, and structured extraction
 
 ### Hybrid
-- Traditional detection → LLM extraction/correction
-- Layout analysis (doctr) + VLM understanding (GOT-OCR)
+- docling: VLM Layout analysis + Tesseract or easyocr OCR engine
 
 ## Moroccan Context
 
@@ -83,6 +84,65 @@ docker run -p 8080:8080 -e DEVICE=cpu ocrkit:latest
 docker run -p 8080:8080 -e DEVICE=cuda ocrkit:latest  # GPU
 ```
 
+## Evaluation Pipeline
+
+Evaluating OCR quality is hard to automate — extracting structured fields from identity documents requires judging both format correctness and field-level accuracy. Human annotation at scale is costly and slow. This project uses **[RAGAS](https://docs.ragas.io/)** to implement a reproducible LLM-as-judge evaluation pipeline.
+
+> "Without evaluation, you're flying blind regarding whether changes improve performance or break functionality." — Arize AI
+
+### Why LLM-as-judge?
+
+LLM-based evaluation addresses a core constraint: getting human feedback on even a fraction of model outputs is expensive. An LLM judge automates this while maintaining consistency and scalability. RAGAS formalizes this with structured metrics, ground truth comparison, and CSV-backed experiment tracking.
+
+### Benchmarking strategy
+
+The evaluation deliberately starts with **closed-source frontier models** (Claude Haiku, Claude Sonnet) to establish a quality ceiling. These results serve as the benchmark that open-source models (GOT-OCR, doctr, Tesseract) and hybrid approaches will be measured against.
+
+| Model | Type | Role |
+|-------|------|------|
+| `claude-haiku-4-5` | Closed-source | Fast baseline, lower cost |
+| `claude-sonnet-4-6` | Closed-source | Quality ceiling / gold standard |
+| GOT-OCR-2.0-hf | Open-source VLM | Primary open-source candidate |
+| doctr / Tesseract | Traditional | Rule-based / DL baseline |
+
+### Metrics
+
+Two RAGAS metrics judge each extraction:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `correct_fields` | `NumericMetric` (0–8) | How many of the 8 RECTO fields were extracted correctly |
+| `format_compliance` | `DiscreteMetric` (correct/incorrect) | Whether the output format matches the expected JSON schema |
+
+A separate `claude-sonnet-4-6` instance acts as the judge LLM, scoring each model's output against ground truth JSON.
+
+### Running experiments
+
+```bash
+cd evals
+uv run --group evals python run.py --model claude-haiku-4-5-20251001 --doc cin --prompt_version v1
+uv run --group evals python run.py --model claude-sonnet-4-6 --doc cin --prompt_version v2
+```
+
+Results are saved as CSV files in `evals/experiments/`.
+
+### Dashboard
+
+A Dash app visualizes experiment results across models and prompt versions:
+
+```bash
+uv run --group evals python dashboard/app.py
+# → http://127.0.0.1:8050
+```
+
+**Dashboard sections:**
+- **Correct Fields** — bar chart of average field extraction accuracy per model × prompt version
+- **Format Compliance** — % of runs with incorrect output format
+- **Execution Time** — average inference latency per model × prompt version
+- **Reason Summarizer** — uses an LLM to synthesize the judge's reasoning across filtered results, surfacing common failure patterns
+- **All Results** — full filterable/sortable table of every experiment run
+- **Row Detail** — per-row inspection of generated vs. expected output with judge reasoning
+
 ## Performance
 
 **M2 CPU (development):**
@@ -110,6 +170,16 @@ ocrkit/
 │   ├── doctr.ipynb
 │   ├── docling.ipynb
 │   └── qwen3-06b.ipynb
+├── evals/               # Evaluation pipeline
+│   ├── run.py           # Experiment runner (RAGAS + Anthropic)
+│   ├── utils.py         # Dataset + prompt loading
+│   ├── datasets/cin/    # CIN dataset (images, ground truth, prompts)
+│   └── experiments/     # Output CSVs from each run
+├── dashboard/           # Results visualization (Dash)
+│   ├── app.py           # Main app + callbacks
+│   ├── components.py    # Charts + filter panel
+│   ├── llm.py           # Reason summarizer (LLM)
+│   └── utils.py         # Data loading helpers
 └── Dockerfile
 ```
 

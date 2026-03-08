@@ -9,7 +9,7 @@ ocrkit is an OCR toolkit covering traditional, LLM-based, and hybrid approaches 
 ```bash
 # Setup
 uv sync
-uv sync --group dev --group api --group experiment
+uv sync --group dev --group api --group evals --group experiment
 
 # Linting / formatting
 ruff check --fix --unsafe-fixes && ruff format
@@ -26,6 +26,12 @@ pytest --cov=ocrkit
 python scripts/stepfun_got_ocr.py --path image.jpg
 python scripts/qwen3_generate.py --prompt "Hello"
 uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
+
+# Evals (run from evals/ directory)
+cd evals && uv run --group evals python run.py --model claude-sonnet-4-6 --doc cin --prompt_version v1
+
+# Dashboard (run from project root)
+uv run --group evals python dashboard/app.py
 
 # Docker
 docker build -t ocrkit:latest .
@@ -49,6 +55,8 @@ src/ocrkit/         # Deployable package (imported by api/, scripts/)
 notebooks/          # POC experiments — not imported by src/
 api/                # FastAPI (main.py + schemas.py)
 scripts/            # CLI entry points (Fire, standalone)
+evals/              # Evaluation pipeline (RAGAS + Anthropic judge LLM)
+dashboard/          # Dash results viewer (reads evals/experiments/*.csv)
 ```
 
 ### OCR Approaches in this repo
@@ -58,6 +66,7 @@ scripts/            # CLI entry points (Fire, standalone)
 | Traditional | Tesseract (tesserocr), doctr | notebooks/, experiment group |
 | LLM-based | GOT-OCR-2.0-hf, Qwen3 | src/ocrkit/models/ |
 | Hybrid | layout + VLM | notebooks/ |
+| Closed-source (eval baseline) | Claude Haiku, Claude Sonnet | evals/ |
 
 ### Inference runtimes (studied in notebooks)
 

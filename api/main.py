@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from inferencekit import GOTOCRModel, ImageHandler, OCRResult, Qwen3Model, TextResult, get_settings
+from ocrkit import GOTOCRModel, ImageHandler, OCRResult, Qwen3Model, TextResult, get_settings
 
 from .schemas import OCRResponse, OCRUrlRequest, TextGenerateRequest, TextResponse
 
@@ -23,7 +23,7 @@ logging.basicConfig(
 
 # Create FastAPI app
 app = FastAPI(
-    title="InferenceKit API",
+    title="OcrKit API",
     description="Model inference API for OCR and text generation",
     version="0.2.0",
 )
@@ -42,7 +42,7 @@ app.add_middleware(
 async def root():
     """Root endpoint redirecting to API info."""
     return {
-        "message": "InferenceKit API",
+        "message": "OcrKit API",
         "docs": "/docs",
         "endpoints": {
             "ocr": "/ocr",
@@ -95,7 +95,7 @@ async def health_check():
         "ocr_model": settings.model_id,
         "text_model": settings.qwen_model_id,
         "device": settings.device,
-        "service": "InferenceKit API",
+        "service": "OcrKit API",
     }
 
 

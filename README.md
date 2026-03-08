@@ -1,6 +1,6 @@
-# InferenceKit
+# OcrKit
 
-Building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf vision language model and Qwen3 text model.
+Building blocks for running OCR inference on various models. Currently supports GOT-OCR-2.0-hf vision language model and Qwen3 text model.
 
 ## Features
 
@@ -17,8 +17,8 @@ Building blocks for running inference on various models (OCR, text generation, e
 ```bash
 # Install uv if you haven't already
 # Clone and setup
-git clone https://github.com/sfnsys710/inferencekit.git
-cd inferencekit
+git clone https://github.com/sfnsys710/ocrkit.git
+cd ocrkit
 uv sync --group api  # Include API dependencies
 cp .env.example .env
 ```
@@ -78,13 +78,13 @@ curl http://localhost:8080/health
 
 ```bash
 # Build image
-docker build -t inferencekit:latest .
+docker build -t ocrkit:latest .
 
 # Run container
-docker run -p 8080:8080 inferencekit:latest
+docker run -p 8080:8080 ocrkit:latest
 
 # Run with environment overrides
-docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
+docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrkit:latest
 ```
 
 ## Model Selection Rationale
@@ -148,8 +148,8 @@ Understanding model suffixes is critical for deployment:
 ### Project Structure
 
 ```
-inferencekit/
-├── src/inferencekit/  # Core reusable Python modules
+ocrkit/
+├── src/ocrkit/  # Core reusable Python modules
 │   ├── content/       # Image loading and validation
 │   ├── models/        # Model implementations (OCR, text generation)
 │   └── schemas/       # Configuration and output schemas
@@ -269,7 +269,7 @@ Cost model:      Pay only during inference (~$0.60/hr active)
 
 ### Configuration Management
 
-All configuration is centralized in `src/inferencekit/schemas/config.py` using pydantic-settings.
+All configuration is centralized in `src/ocrkit/schemas/config.py` using pydantic-settings.
 
 **Environment variables (.env):**
 ```bash
@@ -297,7 +297,7 @@ LOG_LEVEL=INFO
 
 3. Docker: Environment variables passed to container override defaults
    ```bash
-   docker run -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
+   docker run -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrkit:latest
    ```
 
 ### API Monitoring
@@ -323,7 +323,7 @@ Every OCR response includes:
 **Example monitoring in production:**
 ```bash
 # Cloud Run health check
-gcloud run services update inferencekit \
+gcloud run services update ocrkit \
   --region us-central1 \
   --max-instances 10 \
   --cpu 2 \

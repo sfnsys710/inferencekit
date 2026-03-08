@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-inferencekit provides building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf Vision Language Model and Qwen3 text model.
+ocrkit provides building blocks for running inference on various models (OCR, text generation, etc.). Currently supports GOT-OCR-2.0-hf Vision Language Model and Qwen3 text model.
 
 **Architecture:**
 - Development: M2 CPU (transformers)
@@ -74,13 +74,13 @@ jupyter notebook notebooks/
 **Building and running locally:**
 ```bash
 # Build Docker image
-docker build -t inferencekit:latest .
+docker build -t ocrkit:latest .
 
 # Run container
-docker run -p 8080:8080 inferencekit:latest
+docker run -p 8080:8080 ocrkit:latest
 
 # Run with environment overrides
-docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG inferencekit:latest
+docker run -p 8080:8080 -e DEVICE=cpu -e LOG_LEVEL=DEBUG ocrkit:latest
 
 # Test the containerized API
 curl http://localhost:8080/health
@@ -97,7 +97,7 @@ curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
 
 3. **Raise errors, don't exit**: Prefer `raise ValueError()` over `sys.exit(1)`. Let calling code handle errors.
 
-4. **Single Settings class**: All configuration (model, device, generation params, logging) consolidated in one `Settings` class in `src/inferencekit/schemas/config.py`. No separate GenerationConfig or multiple config files.
+4. **Single Settings class**: All configuration (model, device, generation params, logging) consolidated in one `Settings` class in `src/ocrkit/schemas/config.py`. No separate GenerationConfig or multiple config files.
 
 ### Key Architectural Decisions
 
@@ -120,7 +120,7 @@ curl -X POST -F "file=@image.jpg" http://localhost:8080/ocr/upload
 ### Package Structure
 
 ```
-src/inferencekit/        # Core reusable modules
+src/ocrkit/        # Core reusable modules
 ├── __init__.py          # Public API exports
 ├── content/
 │   └── image.py         # ImageHandler with load_from_url() and load_from_path()
@@ -238,7 +238,7 @@ When creating new scripts in `scripts/`:
 - Scripts are standalone - no `__init__.py` in scripts/ directory
 
 ### Configuration Management
-- All settings in one place: `src/inferencekit/schemas/config.py`
+- All settings in one place: `src/ocrkit/schemas/config.py`
 - No separate config files or generation config classes
 - Settings passed directly to model methods
 - Override settings at runtime via script parameters
@@ -285,7 +285,7 @@ When working with Docker containerization (target: **GCP Cloud Run with GPU**):
 
 The project is production-ready and includes:
 
-- **Core modules** (`src/inferencekit/`): Reusable components for running inference on various models (OCR, text generation)
+- **Core modules** (`src/ocrkit/`): Reusable components for running inference on various models (OCR, text generation)
 - **CLI interface** (`scripts/`): Command-line tools for local development and testing
 - **REST API** (`api/`): FastAPI server with file upload and URL-based endpoints
 - **Docker support** (`Dockerfile`): Multi-stage containerization optimized for GCP Cloud Run GPU deployment

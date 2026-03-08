@@ -1,7 +1,7 @@
 """
-inferencekit - Model inference toolkit
+ocrkit - OCR inference toolkit
 
-Main public API for the inferencekit library.
+Main public API for the ocrkit library.
 Provides building blocks for running inference on various models (OCR, text generation, etc.).
 """
 

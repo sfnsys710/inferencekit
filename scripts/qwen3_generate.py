@@ -14,7 +14,7 @@ from pathlib import Path
 
 import fire
 
-from inferencekit import Qwen3Model, TextResult, get_settings
+from ocrkit import Qwen3Model, TextResult, get_settings
 
 logger = logging.getLogger(__name__)
 

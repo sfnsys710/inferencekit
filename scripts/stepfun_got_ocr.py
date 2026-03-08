@@ -14,7 +14,7 @@ from pathlib import Path
 
 import fire
 
-from inferencekit import GOTOCRModel, ImageHandler, OCRResult, get_settings
+from ocrkit import GOTOCRModel, ImageHandler, OCRResult, get_settings
 
 logger = logging.getLogger(__name__)
 

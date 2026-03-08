@@ -1,7 +1,7 @@
 [project]
-name = "inferencekit"
+name = "ocrkit"
 version = "0.4.0"
-description = "Building blocks for running inference on various models (OCR, text generation, etc.)"
+description = "Building blocks for running OCR inference on various models"
 readme = "README.md"
 authors = [
     { name = "sfnsys710", email = "soufianenidam7@gmail.com" }

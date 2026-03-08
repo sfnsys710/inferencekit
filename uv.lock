@@ -947,67 +947,6 @@ wheels = [
 ]
 
 [[package]]
-name = "inferencekit"
-version = "0.4.0"
-source = { editable = "." }
-dependencies = [
-    { name = "fire" },
-    { name = "pillow" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "transformers" },
-]
-
-[package.dev-dependencies]
-api = [
-    { name = "fastapi" },
-    { name = "python-multipart" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-dev = [
-    { name = "jupyter" },
-    { name = "matplotlib" },
-    { name = "pre-commit" },
-]
-experiment = [
-    { name = "docling" },
-    { name = "pymupdf" },
-    { name = "python-doctr", extra = ["viz"] },
-    { name = "tesserocr" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fire", specifier = ">=0.7.1" },
-    { name = "pillow", specifier = ">=10.0.0,<12.0.0" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "torch", specifier = ">=2.9.1" },
-    { name = "torchvision", specifier = ">=0.24.1" },
-    { name = "transformers", specifier = ">=4.57.3" },
-]
-
-[package.metadata.requires-dev]
-api = [
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "python-multipart", specifier = ">=0.0.18" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
-]
-dev = [
-    { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "pre-commit", specifier = ">=4.3.0" },
-]
-experiment = [
-    { name = "docling", specifier = ">=2.68.0" },
-    { name = "pymupdf", specifier = ">=1.26.7" },
-    { name = "python-doctr", extras = ["viz"], specifier = ">=1.0.0" },
-    { name = "tesserocr", specifier = ">=2.9.2" },
-]
-
-[[package]]
 name = "ipykernel"
 version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2136,6 +2075,67 @@ version = "12.8.90"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/eb/86626c1bbc2edb86323022371c39aa48df6fd8b0a1647bc274577f72e90b/nvidia_nvtx_cu12-12.8.90-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5b17e2001cc0d751a5bc2c6ec6d26ad95913324a4adb86788c944f8ce9ba441f", size = 89954, upload-time = "2025-03-07T01:42:44.131Z" },
+]
+
+[[package]]
+name = "ocrkit"
+version = "0.4.0"
+source = { editable = "." }
+dependencies = [
+    { name = "fire" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+]
+
+[package.dev-dependencies]
+api = [
+    { name = "fastapi" },
+    { name = "python-multipart" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+dev = [
+    { name = "jupyter" },
+    { name = "matplotlib" },
+    { name = "pre-commit" },
+]
+experiment = [
+    { name = "docling" },
+    { name = "pymupdf" },
+    { name = "python-doctr", extra = ["viz"] },
+    { name = "tesserocr" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fire", specifier = ">=0.7.1" },
+    { name = "pillow", specifier = ">=10.0.0,<12.0.0" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "torch", specifier = ">=2.9.1" },
+    { name = "torchvision", specifier = ">=0.24.1" },
+    { name = "transformers", specifier = ">=4.57.3" },
+]
+
+[package.metadata.requires-dev]
+api = [
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "python-multipart", specifier = ">=0.0.18" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
+]
+dev = [
+    { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "matplotlib", specifier = ">=3.10.8" },
+    { name = "pre-commit", specifier = ">=4.3.0" },
+]
+experiment = [
+    { name = "docling", specifier = ">=2.68.0" },
+    { name = "pymupdf", specifier = ">=1.26.7" },
+    { name = "python-doctr", extras = ["viz"], specifier = ">=1.0.0" },
+    { name = "tesserocr", specifier = ">=2.9.2" },
 ]
 
 [[package]]

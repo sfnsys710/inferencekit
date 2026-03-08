@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for agentic coding agents working with the inferencekit codebase.
+Guidance for agentic coding agents working with the ocrkit codebase.
 
 ## Build/Lint/Test Commands
 
@@ -22,7 +22,7 @@ pre-commit run --all-files
 pytest                           # All tests
 pytest tests/test_specific.py    # Single file
 pytest tests/test_specific.py::test_function_name  # Single function
-pytest --cov=inferencekit        # With coverage
+pytest --cov=ocrkit        # With coverage
 
 # Running the application
 python scripts/stepfun_got_ocr.py --path image.jpg
@@ -30,8 +30,8 @@ python scripts/qwen3_generate.py --prompt "Hello"
 uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
 
 # Docker
-docker build -t inferencekit:latest .
-docker run -p 8080:8080 inferencekit:latest
+docker build -t ocrkit:latest .
+docker run -p 8080:8080 ocrkit:latest
 ```
 
 ## Code Style Guidelines
@@ -76,7 +76,7 @@ docker run -p 8080:8080 inferencekit:latest
 - Add usage examples in CLI scripts
 
 ### Code Structure
-- **Core modules** (`src/inferencekit/`): Reusable components with clear interfaces
+- **Core modules** (`src/ocrkit/`): Reusable components with clear interfaces
 - **CLI scripts** (`scripts/`): Standalone, function-based with Fire library
 - **API server** (`api/`): Simple FastAPI with all endpoints in `main.py`
 - **Configuration**: Single `Settings` class in `schemas/config.py`

@@ -1,0 +1,4 @@
+id,in,out,tags,notes
+cin1,ins/cin1.png,outs/cin_1.json,[],
+cin2,ins/cin2.jpg,outs/cin_2.json,["background"],
+cin3,ins/cin3.jpeg,outs/cin_3.json,[],

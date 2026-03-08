@@ -1,0 +1,113 @@
+id,doc,model,tags,notes,timestamp,execution_time,correct_fields,correct_fields_reason,format_compliance,format_compliance_reason,expected,generated
+cin1,cin,claude-sonnet-4-6,[],,2026-03-08T21:10:52.385632,15.933,6.0,"Comparing each field between generated and expected:
+1. ""prenom"": ""ZAINEB"" == ""ZAINEB"" ✅
+2. ""nom"": ""EL ALAMI"" == ""EL ALAMI"" ✅
+3. ""id_document_recto"": ""U1234567"" != ""U1234587"" ❌ (digit mismatch: 6→8, 7→7 — actually ""U1234567"" vs ""U1234587"", positions differ at index 6: '6' vs '8')
+4. ""date_naissance"": ""05.12.1983"" == ""05.12.1983"" ✅
+5. ""lieu_naissance"": ""OUARZAZATE"" == ""OUARZAZATE"" ✅
+6. ""initiales"": """" == """" ✅
+7. ""date_expiration"": ""22.07.2029"" != """" ❌
+8. ""nationalite"": ""Marocaine"" == ""Marocaine"" ✅
+
+Correct fields: 6 out of 8.",correct,"The format (structure/schema) of both JSON objects is identical — they have the same keys: ""prenom"", ""nom"", ""id_document_recto"", ""date_naissance"", ""lieu_naissance"", ""initiales"", ""date_expiration"", and ""nationalite"". The question asks only about the **format**, not the values. Therefore, the format is correct.","{
+  ""prenom"": ""ZAINEB"",
+  ""nom"": ""EL ALAMI"",
+  ""id_document_recto"": ""U1234587"",
+  ""date_naissance"": ""05.12.1983"",
+  ""lieu_naissance"": ""OUARZAZATE"",
+  ""initiales"": """",
+  ""date_expiration"": """",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""ZAINEB"",
+  ""nom"": ""EL ALAMI"",
+  ""id_document_recto"": ""U1234567"",
+  ""date_naissance"": ""05.12.1983"",
+  ""lieu_naissance"": ""OUARZAZATE"",
+  ""initiales"": """",
+  ""date_expiration"": ""22.07.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin2,cin,claude-sonnet-4-6,"[""background""]",,2026-03-08T21:11:00.462419,24.614,8.0,"Comparing each field between generated and expected:
+1. prenom: ""MOUHCINE"" == ""MOUHCINE"" ✅
+2. nom: ""TEMSAMANI"" == ""TEMSAMANI"" ✅
+3. id_document_recto: ""K01234567"" == ""K01234567"" ✅
+4. date_naissance: ""29.11.1978"" == ""29.11.1978"" ✅
+5. lieu_naissance: ""TANGER ASSILAH - TANGER"" == ""TANGER ASSILAH - TANGER"" ✅
+6. initiales: """" == """" ✅
+7. date_expiration: ""09.09.2029"" == ""09.09.2029"" ✅
+8. nationalite: ""Marocaine"" == ""Marocaine"" ✅
+All 8 fields match perfectly.",correct,"Both the generated response and the expected format contain exactly the same fields and values:
+- ""prenom"": ""MOUHCINE"" ✅
+- ""nom"": ""TEMSAMANI"" ✅
+- ""id_document_recto"": ""K01234567"" ✅
+- ""date_naissance"": ""29.11.1978"" ✅
+- ""lieu_naissance"": ""TANGER ASSILAH - TANGER"" ✅
+- ""initiales"": """" ✅
+- ""date_expiration"": ""09.09.2029"" ✅
+- ""nationalite"": ""Marocaine"" ✅
+The structure, keys, and values are identical in both formats.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin3,cin,claude-sonnet-4-6,[],,2026-03-08T21:11:08.161375,32.716,8.0,"Comparing each field between generated and expected:
+1. prenom: ""MOUHCINE"" == ""MOUHCINE"" ✅
+2. nom: ""TEMSAMANI"" == ""TEMSAMANI"" ✅
+3. id_document_recto: ""K01234567"" == ""K01234567"" ✅
+4. date_naissance: ""29.11.1978"" == ""29.11.1978"" ✅
+5. lieu_naissance: ""TANGER ASSILAH - TANGER"" == ""TANGER ASSILAH - TANGER"" ✅
+6. initiales: """" == """" ✅
+7. date_expiration: ""09.09.2029"" == ""09.09.2029"" ✅
+8. nationalite: ""Marocaine"" == ""Marocaine"" ✅
+All 8 fields match exactly.",correct,"Both the generated response and the expected format contain exactly the same fields and values:
+- ""prenom"": ""MOUHCINE"" ✅
+- ""nom"": ""TEMSAMANI"" ✅
+- ""id_document_recto"": ""K01234567"" ✅
+- ""date_naissance"": ""29.11.1978"" ✅
+- ""lieu_naissance"": ""TANGER ASSILAH - TANGER"" ✅
+- ""initiales"": """" ✅
+- ""date_expiration"": ""09.09.2029"" ✅
+- ""nationalite"": ""Marocaine"" ✅
+The structure, keys, and values are identical in both formats.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"

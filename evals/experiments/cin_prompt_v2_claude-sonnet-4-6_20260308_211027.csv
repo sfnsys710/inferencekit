@@ -1,0 +1,114 @@
+id,doc,model,tags,notes,timestamp,execution_time,correct_fields,correct_fields_reason,format_compliance,format_compliance_reason,expected,generated
+cin3,cin,claude-sonnet-4-6,[],,2026-03-08T21:10:50.990764,13.92,8.0,"Comparing each field between generated and expected:
+1. prenom: ""MOUHCINE"" == ""MOUHCINE"" ✅
+2. nom: ""TEMSAMANI"" == ""TEMSAMANI"" ✅
+3. id_document_recto: ""K01234567"" == ""K01234567"" ✅
+4. date_naissance: ""29.11.1978"" == ""29.11.1978"" ✅
+5. lieu_naissance: ""TANGER ASSILAH - TANGER"" == ""TANGER ASSILAH - TANGER"" ✅
+6. initiales: """" == """" ✅
+7. date_expiration: ""09.09.2029"" == ""09.09.2029"" ✅
+8. nationalite: ""Marocaine"" == ""Marocaine"" ✅
+All 8 fields match perfectly.",correct,"All fields in the generated response match exactly with the expected format. The keys and values are identical: ""prenom"" is ""MOUHCINE"", ""nom"" is ""TEMSAMANI"", ""id_document_recto"" is ""K01234567"", ""date_naissance"" is ""29.11.1978"", ""lieu_naissance"" is ""TANGER ASSILAH - TANGER"", ""initiales"" is """", ""date_expiration"" is ""09.09.2029"", and ""nationalite"" is ""Marocaine"". The structure and data types also match perfectly.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin1,cin,claude-sonnet-4-6,[],,2026-03-08T21:10:59.307235,23.232,7.0,"Comparing each field between generated and expected:
+1. ""prenom"": ""ZAINEB"" == ""ZAINEB"" ✅
+2. ""nom"": ""EL ALAMI"" == ""EL ALAMI"" ✅
+3. ""id_document_recto"": ""U1234587"" == ""U1234587"" ✅
+4. ""date_naissance"": ""05.12.1983"" == ""05.12.1983"" ✅
+5. ""lieu_naissance"": ""OUARZAZATE"" == ""OUARZAZATE"" ✅
+6. ""initiales"": """" == """" ✅
+7. ""date_expiration"": ""22.07.2029"" != """" ❌
+8. ""nationalite"": ""Marocaine"" == ""Marocaine"" ✅
+
+Out of 8 fields, 7 are correct and 1 (""date_expiration"") is incorrect.",incorrect,"Comparing the generated response with the expected format field by field:
+- ""prenom"": ""ZAINEB"" ✅ matches
+- ""nom"": ""EL ALAMI"" ✅ matches
+- ""id_document_recto"": ""U1234587"" ✅ matches
+- ""date_naissance"": ""05.12.1983"" ✅ matches
+- ""lieu_naissance"": ""OUARZAZATE"" ✅ matches
+- ""initiales"": """" ✅ matches
+- ""date_expiration"": ""22.07.2029"" ❌ does NOT match the expected value of """"
+- ""nationalite"": ""Marocaine"" ✅ matches
+
+The field ""date_expiration"" has a value of ""22.07.2029"" in the generated response, while the expected format has an empty string """". This mismatch makes the response incorrect.","{
+  ""prenom"": ""ZAINEB"",
+  ""nom"": ""EL ALAMI"",
+  ""id_document_recto"": ""U1234587"",
+  ""date_naissance"": ""05.12.1983"",
+  ""lieu_naissance"": ""OUARZAZATE"",
+  ""initiales"": """",
+  ""date_expiration"": """",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""ZAINEB"",
+  ""nom"": ""EL ALAMI"",
+  ""id_document_recto"": ""U1234587"",
+  ""date_naissance"": ""05.12.1983"",
+  ""lieu_naissance"": ""OUARZAZATE"",
+  ""initiales"": """",
+  ""date_expiration"": ""22.07.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin2,cin,claude-sonnet-4-6,"[""background""]",,2026-03-08T21:11:07.552436,31.533,8.0,"Comparing each field between generated and expected:
+1. prenom: ""MOUHCINE"" == ""MOUHCINE"" ✅
+2. nom: ""TEMSAMANI"" == ""TEMSAMANI"" ✅
+3. id_document_recto: ""K01234567"" == ""K01234567"" ✅
+4. date_naissance: ""29.11.1978"" == ""29.11.1978"" ✅
+5. lieu_naissance: ""TANGER ASSILAH - TANGER"" == ""TANGER ASSILAH - TANGER"" ✅
+6. initiales: """" == """" ✅
+7. date_expiration: ""09.09.2029"" == ""09.09.2029"" ✅
+8. nationalite: ""Marocaine"" == ""Marocaine"" ✅
+All 8 fields match perfectly.",correct,"Both the generated response and the expected format contain exactly the same fields and values:
+- ""prenom"": ""MOUHCINE"" ✓
+- ""nom"": ""TEMSAMANI"" ✓
+- ""id_document_recto"": ""K01234567"" ✓
+- ""date_naissance"": ""29.11.1978"" ✓
+- ""lieu_naissance"": ""TANGER ASSILAH - TANGER"" ✓
+- ""initiales"": """" ✓
+- ""date_expiration"": ""09.09.2029"" ✓
+- ""nationalite"": ""Marocaine"" ✓
+The structure, keys, and values are identical in both formats.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"

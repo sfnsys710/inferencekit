@@ -1,0 +1,107 @@
+id,doc,model,tags,notes,timestamp,execution_time,correct_fields,correct_fields_reason,format_compliance,format_compliance_reason,expected,generated
+cin3,cin,claude-haiku-4-5-20251001,[],,2026-03-08T21:05:26.544783,2.208,3.0,"Comparing each field between generated and expected:
+1. prenom: ""TERGUAMAN"" vs ""MOUHCINE"" → ❌ INCORRECT
+2. nom: ""BRAHIM"" vs ""TEMSAMANI"" → ❌ INCORRECT
+3. id_document_recto: ""K01224567"" vs ""K01234567"" → ❌ INCORRECT (digit mismatch: '224' vs '234')
+4. date_naissance: ""29.11.1978"" vs ""29.11.1978"" → ✅ CORRECT
+5. lieu_naissance: ""TANGER ASSILAH - TANGER"" vs ""TANGER ASSILAH - TANGER"" → ✅ CORRECT
+6. initiales: ""TB"" vs """" → ❌ INCORRECT
+7. date_expiration: ""09.08.2009"" vs ""09.09.2029"" → ❌ INCORRECT (month and year differ)
+8. nationalite: ""Marocaine"" vs ""Marocaine"" → ✅ CORRECT
+
+Total correct: 3 out of 8 fields.",correct,"The generated response has the same keys/fields as the expected format: ""prenom"", ""nom"", ""id_document_recto"", ""date_naissance"", ""lieu_naissance"", ""initiales"", ""date_expiration"", and ""nationalite"". All fields are present and use the same data types (strings). The values differ between the two objects, but the structural format is identical.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""TERGUAMAN"",
+  ""nom"": ""BRAHIM"",
+  ""id_document_recto"": ""K01224567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": ""TB"",
+  ""date_expiration"": ""09.08.2009"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin2,cin,claude-haiku-4-5-20251001,"[""background""]",,2026-03-08T21:05:36.060058,10.369,5.0,"Comparing generated vs expected fields one by one:
+1. ""prenom"": ""MOUHCINE"" vs ""MOUHCINE"" ✅ CORRECT
+2. ""nom"": ""TEMSAMANI"" vs ""TEMSAMANI"" ✅ CORRECT
+3. ""id_document_recto"": ""K01234567"" vs ""K01234567"" ✅ CORRECT
+4. ""date_naissance"": ""28.11.1978"" vs ""29.11.1978"" ❌ INCORRECT (day 28 vs 29)
+5. ""lieu_naissance"": ""TANGER ASSILAN - TANGER"" vs ""TANGER ASSILAH - TANGER"" ❌ INCORRECT (ASSILAN vs ASSILAH)
+6. ""initiales"": ""MT"" vs """" ❌ INCORRECT (MT vs empty string)
+7. ""date_expiration"": ""09.09.2029"" vs ""09.09.2029"" ✅ CORRECT
+8. ""nationalite"": ""Marocaine"" vs ""Marocaine"" ✅ CORRECT
+
+Total correct: 5 out of 8 fields.",incorrect,"Comparing the generated response with the expected format field by field:
+- ""prenom"": ""MOUHCINE"" ✅ Match
+- ""nom"": ""TEMSAMANI"" ✅ Match
+- ""id_document_recto"": ""K01234567"" ✅ Match
+- ""date_naissance"": ""28.11.1978"" ❌ Does NOT match (expected ""29.11.1978"")
+- ""lieu_naissance"": ""TANGER ASSILAN - TANGER"" ❌ Does NOT match (expected ""TANGER ASSILAH - TANGER"")
+- ""initiales"": ""MT"" ❌ Does NOT match (expected """")
+- ""date_expiration"": ""09.09.2029"" ✅ Match
+- ""nationalite"": ""Marocaine"" ✅ Match
+
+There are 3 mismatches: date_naissance, lieu_naissance, and initiales. Therefore, the format/content is incorrect.","{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""29.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAH - TANGER"",
+  ""initiales"": """",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""MOUHCINE"",
+  ""nom"": ""TEMSAMANI"",
+  ""id_document_recto"": ""K01234567"",
+  ""date_naissance"": ""28.11.1978"",
+  ""lieu_naissance"": ""TANGER ASSILAN - TANGER"",
+  ""initiales"": ""MT"",
+  ""date_expiration"": ""09.09.2029"",
+  ""nationalite"": ""Marocaine""
+}
+```"
+cin1,cin,claude-haiku-4-5-20251001,[],,2026-03-08T21:05:44.789431,19.885,2.0,"Comparing each field between generated and expected:
+1. ""prenom"": ""ZAHRA"" vs ""ZAINEB"" → ❌ Incorrect
+2. ""nom"": ""ZAINEB"" vs ""EL ALAMI"" → ❌ Incorrect
+3. ""id_document_recto"": ""U1234567"" vs ""U1234587"" → ❌ Incorrect (digit mismatch: 567 vs 587)
+4. ""date_naissance"": ""08/12/1983"" vs ""05.12.1983"" → ❌ Incorrect (day and separator differ)
+5. ""lieu_naissance"": ""CASABLANCA"" vs ""OUARZAZATE"" → ❌ Incorrect
+6. ""initiales"": """" vs """" → ✅ Correct
+7. ""date_expiration"": ""22/07/2026"" vs """" → ❌ Incorrect
+8. ""nationalite"": ""Marocaine"" vs ""Marocaine"" → ✅ Correct
+
+Total correct: 2 out of 8 fields.",correct,"The format (structure/keys) of both JSON objects is identical — they share the same set of keys: ""prenom"", ""nom"", ""id_document_recto"", ""date_naissance"", ""lieu_naissance"", ""initiales"", ""date_expiration"", and ""nationalite"". The values differ (e.g., different names, dates, places), but the question only asks about format, not value accuracy. Therefore, the format is correct.","{
+  ""prenom"": ""ZAINEB"",
+  ""nom"": ""EL ALAMI"",
+  ""id_document_recto"": ""U1234587"",
+  ""date_naissance"": ""05.12.1983"",
+  ""lieu_naissance"": ""OUARZAZATE"",
+  ""initiales"": """",
+  ""date_expiration"": """",
+  ""nationalite"": ""Marocaine""
+}
+","```json
+{
+  ""prenom"": ""ZAHRA"",
+  ""nom"": ""ZAINEB"",
+  ""id_document_recto"": ""U1234567"",
+  ""date_naissance"": ""08/12/1983"",
+  ""lieu_naissance"": ""CASABLANCA"",
+  ""initiales"": """",
+  ""date_expiration"": ""22/07/2026"",
+  ""nationalite"": ""Marocaine""
+}
+```"

@@ -9,7 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fire>=0.7.1",
-    "pillow>=12.0.0",
+    "pillow>=10.0.0,<12.0.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
     "torch>=2.9.1",
@@ -24,14 +24,19 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
+    "matplotlib>=3.10.8",
+    "pre-commit>=4.3.0",
 ]
 api = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.18",
 ]
-pre-commit = [
-    "pre-commit>=4.3.0",
+experiment = [
+    "docling>=2.68.0",
+    "pymupdf>=1.26.7",
+    "python-doctr[viz]>=1.0.0",
+    "tesserocr>=2.9.2",
 ]
 
 [tool.ruff]
